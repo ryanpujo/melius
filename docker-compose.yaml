@@ -1,0 +1,24 @@
+services:
+  inventory-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    ports:
+      - 4040:8080
+    volumes:
+      - ./:/app
+    
+  
+  postgres:
+    image: 'postgres:16.2-alpine'
+    restart: always
+    environment:
+      POSTGRES_USER: ryanpujo
+      POSTGRES_PASSWORD: praim
+      POSTGRES_DB: melius
+    ports:
+      - 5432:5432
+    volumes:
+      - ./sql/test.sql:/docker-entrypoint-initdb.d/create_tables.sql
