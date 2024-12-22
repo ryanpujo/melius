@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ryanpujo/melius/internal/models"
@@ -16,9 +15,24 @@ import (
 )
 
 var (
-	db             *sql.DB
-	mock           sqlmock.Sqlmock
-	credentialRepo *repositories.CredentialRepo
+	db                *sql.DB
+	mock              sqlmock.Sqlmock
+	credentialRepo    *repositories.CredentialRepo
+	credentialPayload = models.CredentialPayload{
+		Email:    "ryanpujo@gmail.com",
+		Username: "ryanpujo",
+		Password: "okeoke",
+	}
+	credential = &models.Credential{
+		Email:    "ryanpujo@gmail.com",
+		Username: "ryanpujo",
+		Password: "okeoke",
+	}
+	userPayload = models.UserPayload{
+		FirstName:         "Ryan",
+		LastName:          "Pujo",
+		CredentialPayload: credentialPayload,
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -35,16 +49,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestShouldCreateUserAndCredential(t *testing.T) {
-	credential := models.CredentialPayload{
-		Email:    "ryanpujo@gmail.com",
-		Username: "ryanpujo",
-		Password: "okeoke",
-	}
-	user := models.UserPayload{
-		FirstName:         "Ryan",
-		LastName:          "Pujo",
-		CredentialPayload: credential,
-	}
 	tableTest := map[string]struct {
 		arrange func()
 		assert  func(t *testing.T, id uint, err error)
@@ -54,20 +58,20 @@ func TestShouldCreateUserAndCredential(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery("INSERT INTO credentials").
 					WithArgs(
-						credential.Email,
-						credential.Username,
-						credential.Password,
-						time.Now().Format(time.RFC3339),
-						time.Now().Format(time.RFC3339)).
-					WillReturnRows(sqlmock.NewRows([]string{"username"}).AddRow(credential.Username))
+						credentialPayload.Email,
+						credentialPayload.Username,
+						credentialPayload.Password,
+						sqlmock.AnyArg(),
+						sqlmock.AnyArg()).
+					WillReturnRows(sqlmock.NewRows([]string{"username"}).AddRow(credentialPayload.Username))
 
 				mock.ExpectQuery("INSERT INTO users").
 					WithArgs(
-						user.FirstName,
-						user.LastName,
-						user.CredentialPayload.Username,
-						time.Now().Format(time.RFC3339),
-						time.Now().Format(time.RFC3339)).
+						userPayload.FirstName,
+						userPayload.LastName,
+						userPayload.CredentialPayload.Username,
+						sqlmock.AnyArg(),
+						sqlmock.AnyArg()).
 					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
 				mock.ExpectCommit()
@@ -82,21 +86,12 @@ func TestShouldCreateUserAndCredential(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery("INSERT INTO credentials").
 					WithArgs(
-						credential.Email,
-						credential.Username,
-						credential.Password,
-						time.Now().Format(time.RFC3339),
-						time.Now().Format(time.RFC3339)).
-					WillReturnError(errors.New("failed"))
-
-				mock.ExpectQuery("INSERT INTO users").
-					WithArgs(
-						user.FirstName,
-						user.LastName,
-						user.CredentialPayload.Username,
-						time.Now().Format(time.RFC3339),
-						time.Now().Format(time.RFC3339)).
-					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+						credentialPayload.Email,
+						credentialPayload.Username,
+						credentialPayload.Password,
+						sqlmock.AnyArg(),
+						sqlmock.AnyArg()).
+					WillReturnRows(sqlmock.NewRows([]string{"username"}).RowError(1, errors.New("failed")))
 
 				mock.ExpectRollback()
 			},
@@ -110,21 +105,21 @@ func TestShouldCreateUserAndCredential(t *testing.T) {
 				mock.ExpectBegin()
 				mock.ExpectQuery("INSERT INTO credentials").
 					WithArgs(
-						credential.Email,
-						credential.Username,
-						credential.Password,
-						time.Now().Format(time.RFC3339),
-						time.Now().Format(time.RFC3339)).
-					WillReturnRows(sqlmock.NewRows([]string{"username"}).AddRow(credential.Username))
+						credentialPayload.Email,
+						credentialPayload.Username,
+						credentialPayload.Password,
+						sqlmock.AnyArg(),
+						sqlmock.AnyArg()).
+					WillReturnRows(sqlmock.NewRows([]string{"username"}).AddRow(credentialPayload.Username))
 
 				mock.ExpectQuery("INSERT INTO users").
 					WithArgs(
-						user.FirstName,
-						user.LastName,
-						user.CredentialPayload.Username,
+						userPayload.FirstName,
+						userPayload.LastName,
+						userPayload.CredentialPayload.Username,
 						sqlmock.AnyArg(),
 						sqlmock.AnyArg()).
-					WillReturnError(errors.New("user failed"))
+					WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow("dgrg"))
 
 				mock.ExpectRollback()
 			},
@@ -144,13 +139,65 @@ func TestShouldCreateUserAndCredential(t *testing.T) {
 		},
 	}
 
-	for key, v := range tableTest {
-		t.Run(key, func(t *testing.T) {
+	for _, v := range tableTest {
+		v.arrange()
+
+		id, err := credentialRepo.Write(context.Background(), userPayload)
+
+		v.assert(t, id, err)
+		err = mock.ExpectationsWereMet()
+		if err != nil {
+			t.Errorf("Unmet expectations: %v", err)
+		}
+	}
+}
+
+func TestFindByUsername(t *testing.T) {
+	tableTest := map[string]struct {
+		arrange func()
+		assert  func(t *testing.T, cred *models.Credential, err error)
+	}{
+		"success": {
+			arrange: func() {
+				row := sqlmock.NewRows([]string{"email", "username", "password"}).
+					AddRow(credentialPayload.Email, credentialPayload.Username, credentialPayload.Password)
+
+				mock.ExpectQuery(`
+					SELECT email, username, password FROM credentials WHERE username = \$1
+				`).WithArgs(credentialPayload.Username).WillReturnRows(row)
+			},
+			assert: func(t *testing.T, cred *models.Credential, err error) {
+				require.NoError(t, err)
+				require.Equal(t, credential, cred)
+			},
+		},
+		"scan failed": {
+			arrange: func() {
+				row := sqlmock.NewRows([]string{"email", "username", "password"}).
+					RowError(1, errors.New("failed to scan"))
+
+				mock.ExpectQuery(`
+					SELECT email, username, password FROM credentials WHERE username = \$1
+				`).WithArgs(credentialPayload.Username).WillReturnRows(row)
+			},
+			assert: func(t *testing.T, cred *models.Credential, err error) {
+				require.Error(t, err)
+				require.Nil(t, cred)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := credentialRepo.Write(context.Background(), user)
+			cred, err := credentialRepo.FindByUsername(context.Background(), credentialPayload.Username)
 
-			v.assert(t, id, err)
+			v.assert(t, cred, err)
+			err = mock.ExpectationsWereMet()
+			if err != nil {
+				t.Errorf("Unmet expectations: %v", err)
+			}
 		})
 	}
 }

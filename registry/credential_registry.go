@@ -10,7 +10,7 @@ func (r *Registry) GetCredentialRepo() repositories.CredentialInterface {
 	return repositories.NewCredentialRepo(r.db)
 }
 
-func (r *Registry) GetCredentialService() *services.CredentialService {
+func (r *Registry) GetCredentialService() services.CredentialInterface {
 	return services.NewCredService(r.GetCredentialRepo())
 }
 

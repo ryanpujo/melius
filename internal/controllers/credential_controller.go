@@ -53,3 +53,36 @@ func (cc *CredentialController) Write(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, res)
 }
+
+func (cc *CredentialController) Login(c *gin.Context) {
+	var payload models.LoginPayload
+
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		res := utilities.RegistrationResponse{
+			Message: "validation error",
+			Err:     err,
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c, time.Second*1)
+	defer cancel()
+
+	jwt, err := cc.credService.Login(ctx, &payload)
+	if err != nil {
+		res := utilities.RegistrationResponse{
+			Message: "login failed",
+			Err:     err,
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	res := utilities.RegistrationResponse{
+		Message: "login successful",
+		Token:   jwt,
+	}
+
+	c.JSON(http.StatusOK, res)
+}

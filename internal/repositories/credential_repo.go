@@ -10,6 +10,7 @@ import (
 
 type CredentialInterface interface {
 	Write(ctx context.Context, payload models.UserPayload) (uint, error)
+	FindByUsername(ctx context.Context, username string) (*models.Credential, error)
 }
 
 type CredentialRepo struct {
@@ -75,4 +76,22 @@ func (cr *CredentialRepo) Write(ctx context.Context, payload models.UserPayload)
 	}
 
 	return id, tx.Commit()
+}
+
+func (cr *CredentialRepo) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+	query := `
+		SELECT email, username, password 
+		FROM credentials
+		WHERE username = $1
+	`
+	row := cr.dB.QueryRowContext(ctx, query, username)
+	var credential models.Credential
+	if err := row.Scan(
+		&credential.Email,
+		&credential.Username,
+		&credential.Password,
+	); err != nil {
+		return nil, err
+	}
+	return &credential, nil
 }

@@ -28,6 +28,15 @@ func (crm *CredServiceMock) Write(ctx context.Context, payload models.UserPayloa
 	return uint(args.Int(0)), args.Error(1)
 }
 
+func (csm *CredServiceMock) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+	return nil, nil
+}
+
+func (csm *CredServiceMock) Login(ctx context.Context, payload *models.LoginPayload) (string, error) {
+	args := csm.Called(ctx, payload)
+	return args.String(0), args.Error(1)
+}
+
 var (
 	csm     *CredServiceMock
 	handler http.Handler
@@ -88,6 +97,60 @@ func TestWrite(t *testing.T) {
 			jsonReq, _ := json.Marshal(user)
 
 			req := httptest.NewRequest(http.MethodPost, "/regis", bytes.NewReader(jsonReq))
+			res := httptest.NewRecorder()
+
+			handler.ServeHTTP(res, req)
+
+			var jsonRes utilities.RegistrationResponse
+
+			json.NewDecoder(res.Body).Decode(&jsonRes)
+
+			v.assert(t, res.Code, jsonRes)
+		})
+	}
+}
+
+func TestLogin(t *testing.T) {
+	loginPayload := models.LoginPayload{
+		Username: "ryanpujo",
+		Password: "okeoke",
+	}
+	jsonStrValid, _ := json.Marshal(loginPayload)
+	tableTest := map[string]struct {
+		json    []byte
+		arrange func()
+		assert  func(t *testing.T, statusCode int, json utilities.RegistrationResponse)
+	}{
+		"success": {
+			json: jsonStrValid,
+			arrange: func() {
+				csm.On("Login", mock.Anything, mock.Anything).Return("token", nil).Once()
+			},
+			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+				require.Equal(t, http.StatusOK, statusCode)
+				require.NotNil(t, json)
+				require.NotZero(t, json.Token)
+			},
+		},
+		"failed": {
+			json: jsonStrValid,
+			arrange: func() {
+				csm.On("Login", mock.Anything, mock.Anything).Return("", errors.New("failed")).Once()
+			},
+			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+				require.Equal(t, http.StatusBadRequest, statusCode)
+				require.NotNil(t, json)
+				require.Zero(t, json.Token)
+				require.Equal(t, "login failed", json.Message)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(v.json))
 			res := httptest.NewRecorder()
 
 			handler.ServeHTTP(res, req)

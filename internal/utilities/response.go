@@ -2,6 +2,7 @@ package utilities
 
 type RegistrationResponse struct {
 	ID      uint   `json:"id"`
-	Err     error  `json:"-"`
+	Token   string `json:"token"`
+	Err     error  `json:"err"`
 	Message string `json:"message"`
 }
