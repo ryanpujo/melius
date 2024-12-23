@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/ryanpujo/melius/internal/models"
@@ -78,12 +79,16 @@ func (cr *CredentialRepo) Write(ctx context.Context, payload models.UserPayload)
 	return id, tx.Commit()
 }
 
+// FindByUsername retrieves a user's credentials from the database by username.
+// It returns the corresponding credential or an error if the user is not found.
 func (cr *CredentialRepo) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
 	query := `
 		SELECT email, username, password 
 		FROM credentials
 		WHERE username = $1
 	`
+
+	// Execute the query and scan the result into the credential struct
 	row := cr.dB.QueryRowContext(ctx, query, username)
 	var credential models.Credential
 	if err := row.Scan(
@@ -91,7 +96,14 @@ func (cr *CredentialRepo) FindByUsername(ctx context.Context, username string) (
 		&credential.Username,
 		&credential.Password,
 	); err != nil {
-		return nil, err
+		if err == sql.ErrNoRows {
+			// Return a descriptive error if no user is found
+			return nil, fmt.Errorf("user with username '%s' not found: %w", username, err)
+		}
+		// Return other database-related errors
+		return nil, fmt.Errorf("error retrieving user: %w", err)
 	}
+
+	// Return the populated credential struct
 	return &credential, nil
 }

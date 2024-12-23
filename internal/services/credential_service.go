@@ -10,55 +10,90 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// CredentialInterface defines the contract for credential-related operations.
 type CredentialInterface interface {
 	Write(ctx context.Context, payload models.UserPayload) (uint, error)
 	FindByUsername(ctx context.Context, username string) (*models.Credential, error)
 	Login(ctx context.Context, payload *models.LoginPayload) (string, error)
 }
 
+// CredentialService implements the CredentialInterface and provides business logic.
 type CredentialService struct {
 	credRepo repositories.CredentialInterface
 }
 
-func NewCredService(credRepo repositories.CredentialInterface) *CredentialService {
+// NewCredentialService creates a new instance of CredentialService.
+func NewCredentialService(credRepo repositories.CredentialInterface) *CredentialService {
 	return &CredentialService{
 		credRepo: credRepo,
 	}
 }
 
+// HashPassword generates a bcrypt hash of the given password.
 var HashPassword = func(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	return string(hash), err
-}
-
-func (cs *CredentialService) Write(ctx context.Context, payload models.UserPayload) (uint, error) {
-	password, err := HashPassword(payload.CredentialPayload.Password)
 	if err != nil {
-		return 0, err
+		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
-	payload.CredentialPayload.Password = string(password)
-	return cs.credRepo.Write(ctx, payload)
+	return string(hash), nil
 }
 
-func (cs *CredentialService) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
-
-	return cs.credRepo.FindByUsername(ctx, username)
-}
-
-var CompareHashAndPassword = func(hash string, plain string) error {
+// CompareHashAndPassword verifies that a plain-text password matches a bcrypt hash.
+var CompareHashAndPassword = func(hash, plain string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plain))
 }
 
-func (cs *CredentialService) Login(ctx context.Context, payload *models.LoginPayload) (string, error) {
-	credFound, err := cs.FindByUsername(ctx, payload.Username)
+// Write creates a new user credential and stores it in the repository.
+// It hashes the password before saving.
+func (cs *CredentialService) Write(ctx context.Context, payload models.UserPayload) (uint, error) {
+	passwordHash, err := HashPassword(payload.CredentialPayload.Password)
 	if err != nil {
-		return "", fmt.Errorf("credential not found: %w", err)
+		return 0, err
 	}
 
-	err = CompareHashAndPassword(credFound.Password, payload.Password)
-	if err != nil {
-		return "", fmt.Errorf("credential not found: %w", err)
-	}
+	// Replace the plain-text password with the hashed password.
+	payload.CredentialPayload.Password = passwordHash
 
-	return jwttoken.GenerateJWT(credFound.Username)
+	// Delegate the write operation to the repository.
+	return cs.credRepo.Write(ctx, payload)
 }
+
+// FindByUsername retrieves a credential by username from the repository.
+func (cs *CredentialService) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+	credential, err := cs.credRepo.FindByUsername(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find credential: %w", err)
+	}
+	return credential, nil
+}
+
+// Login authenticates a user by username and password, returning a JWT if successful.
+func (cs *CredentialService) Login(ctx context.Context, payload *models.LoginPayload) (string, error) {
+	// Retrieve the credential by username.
+	credential, err := cs.FindByUsername(ctx, payload.Username)
+	if err != nil {
+		return "", fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Verify the provided password matches the stored hash.
+	if err := CompareHashAndPassword(credential.Password, payload.Password); err != nil {
+		return "", fmt.Errorf("authentication failed: %w", err)
+	}
+
+	// Generate a JWT token for the authenticated user.
+	token, err := jwttoken.GenerateJWT(credential.Username)
+	if err != nil {
+		return "", fmt.Errorf("authentication failed: %w", err)
+	}
+
+	return token, nil
+}
+
+// Documentation Summary:
+// 1. CredentialInterface: Defines the contract for credential operations.
+// 2. CredentialService: Implements the business logic for credential operations.
+// 3. HashPassword: Hashes a plain-text password using bcrypt.
+// 4. CompareHashAndPassword: Verifies a password against a bcrypt hash.
+// 5. Write: Handles the creation of new credentials with password hashing.
+// 6. FindByUsername: Retrieves credentials by username.
+// 7. Login: Authenticates a user and generates a JWT on successful login.

@@ -11,7 +11,7 @@ func (r *Registry) GetCredentialRepo() repositories.CredentialInterface {
 }
 
 func (r *Registry) GetCredentialService() services.CredentialInterface {
-	return services.NewCredService(r.GetCredentialRepo())
+	return services.NewCredentialService(r.GetCredentialRepo())
 }
 
 func (r *Registry) GetCredentialController() *controllers.CredentialController {

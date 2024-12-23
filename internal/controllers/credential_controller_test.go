@@ -61,16 +61,25 @@ func TestWrite(t *testing.T) {
 		Username: "ryanpujo",
 		Password: "okeoke",
 	}
+	invalidCredential := models.CredentialPayload{
+		Email:    "ryanpujogmail.com",
+		Username: "ryanpujo",
+		Password: "okeoke",
+	}
 	user := models.UserPayload{
 		FirstName:         "Ryan",
 		LastName:          "Pujo",
 		CredentialPayload: credential,
 	}
+	validJson, _ := json.Marshal(user)
+	invalidJson, _ := json.Marshal(invalidCredential)
 	tableTest := map[string]struct {
+		json    []byte
 		arrange func()
 		assert  func(t *testing.T, statusCode int, json utilities.RegistrationResponse)
 	}{
 		"success": {
+			json: validJson,
 			arrange: func() {
 				csm.On("Write", mock.Anything, user).Return(1, nil).Once()
 			},
@@ -80,13 +89,22 @@ func TestWrite(t *testing.T) {
 			},
 		},
 		"failed": {
+			json: validJson,
 			arrange: func() {
 				csm.On("Write", mock.Anything, user).Return(0, errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
 				require.Equal(t, http.StatusBadRequest, statusCode)
 				require.Zero(t, json.ID)
-				require.Equal(t, "failed to create user", json.Message)
+				require.Equal(t, "Failed to create user", json.Message)
+			},
+		},
+		"validation failed": {
+			json:    invalidJson,
+			arrange: func() {},
+			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+				require.Equal(t, http.StatusBadRequest, statusCode)
+				require.Equal(t, "Validation error", json.Message)
 			},
 		},
 	}
@@ -94,9 +112,8 @@ func TestWrite(t *testing.T) {
 	for k, v := range tableTest {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
-			jsonReq, _ := json.Marshal(user)
 
-			req := httptest.NewRequest(http.MethodPost, "/regis", bytes.NewReader(jsonReq))
+			req := httptest.NewRequest(http.MethodPost, "/regis", bytes.NewReader(v.json))
 			res := httptest.NewRecorder()
 
 			handler.ServeHTTP(res, req)
@@ -115,7 +132,12 @@ func TestLogin(t *testing.T) {
 		Username: "ryanpujo",
 		Password: "okeoke",
 	}
+	invalidLoginPayload := models.LoginPayload{
+		Username: "",
+		Password: "okeoke",
+	}
 	jsonStrValid, _ := json.Marshal(loginPayload)
+	invalidJson, _ := json.Marshal(invalidLoginPayload)
 	tableTest := map[string]struct {
 		json    []byte
 		arrange func()
@@ -141,7 +163,15 @@ func TestLogin(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, statusCode)
 				require.NotNil(t, json)
 				require.Zero(t, json.Token)
-				require.Equal(t, "login failed", json.Message)
+				require.Equal(t, "Login failed", json.Message)
+			},
+		},
+		"validation failed": {
+			json:    invalidJson,
+			arrange: func() {},
+			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+				require.Equal(t, http.StatusBadRequest, statusCode)
+				require.Equal(t, "Validation error", json.Message)
 			},
 		},
 	}

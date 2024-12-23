@@ -51,7 +51,7 @@ var (
 
 func TestMain(m *testing.M) {
 	crm = new(CredRepoMock)
-	credService = *services.NewCredService(crm)
+	credService = *services.NewCredentialService(crm)
 	os.Exit(m.Run())
 }
 
