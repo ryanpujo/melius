@@ -1,8 +1,8 @@
 package utilities
 
-type RegistrationResponse struct {
-	ID      uint   `json:"id"`
-	Token   string `json:"token"`
-	Err     string `json:"err"`
-	Message string `json:"message"`
+type Response struct {
+	ID      uint   `json:"id,omitempty"`
+	Token   string `json:"token,omitempty"`
+	Err     string `json:"err,omitempty"`
+	Message string `json:"message,omitempty"`
 }

@@ -31,7 +31,7 @@ func (cc *CredentialController) Write(c *gin.Context) {
 
 	// Bind and validate JSON payload
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, utilities.RegistrationResponse{
+		c.JSON(http.StatusBadRequest, utilities.Response{
 			Message: "Validation error",
 			Err:     err.Error(),
 		})
@@ -45,7 +45,7 @@ func (cc *CredentialController) Write(c *gin.Context) {
 	// Call service to create user
 	id, err := cc.credService.Write(ctx, payload)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, utilities.RegistrationResponse{
+		c.JSON(http.StatusBadRequest, utilities.Response{
 			Message: "Failed to create user",
 			Err:     err.Error(),
 		})
@@ -53,7 +53,7 @@ func (cc *CredentialController) Write(c *gin.Context) {
 	}
 
 	// Respond with success
-	c.JSON(http.StatusCreated, utilities.RegistrationResponse{
+	c.JSON(http.StatusCreated, utilities.Response{
 		ID:      id,
 		Message: "User created successfully",
 	})
@@ -67,7 +67,7 @@ func (cc *CredentialController) Login(c *gin.Context) {
 
 	// Bind and validate JSON payload
 	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, utilities.RegistrationResponse{
+		c.JSON(http.StatusBadRequest, utilities.Response{
 			Message: "Validation error",
 			Err:     err.Error(),
 		})
@@ -81,7 +81,7 @@ func (cc *CredentialController) Login(c *gin.Context) {
 	// Call service to authenticate user
 	jwt, err := cc.credService.Login(ctx, &payload)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, utilities.RegistrationResponse{
+		c.JSON(http.StatusBadRequest, utilities.Response{
 			Message: "Login failed",
 			Err:     err.Error(),
 		})
@@ -89,7 +89,7 @@ func (cc *CredentialController) Login(c *gin.Context) {
 	}
 
 	// Respond with success
-	c.JSON(http.StatusOK, utilities.RegistrationResponse{
+	c.JSON(http.StatusOK, utilities.Response{
 		Message: "Login successful",
 		Token:   jwt,
 	})

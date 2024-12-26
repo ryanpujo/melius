@@ -76,14 +76,14 @@ func TestWrite(t *testing.T) {
 	tableTest := map[string]struct {
 		json    []byte
 		arrange func()
-		assert  func(t *testing.T, statusCode int, json utilities.RegistrationResponse)
+		assert  func(t *testing.T, statusCode int, json utilities.Response)
 	}{
 		"success": {
 			json: validJson,
 			arrange: func() {
 				csm.On("Write", mock.Anything, user).Return(1, nil).Once()
 			},
-			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+			assert: func(t *testing.T, statusCode int, json utilities.Response) {
 				require.Equal(t, http.StatusCreated, statusCode)
 				require.Equal(t, uint(1), json.ID)
 			},
@@ -93,7 +93,7 @@ func TestWrite(t *testing.T) {
 			arrange: func() {
 				csm.On("Write", mock.Anything, user).Return(0, errors.New("failed")).Once()
 			},
-			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+			assert: func(t *testing.T, statusCode int, json utilities.Response) {
 				require.Equal(t, http.StatusBadRequest, statusCode)
 				require.Zero(t, json.ID)
 				require.Equal(t, "Failed to create user", json.Message)
@@ -102,7 +102,7 @@ func TestWrite(t *testing.T) {
 		"validation failed": {
 			json:    invalidJson,
 			arrange: func() {},
-			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+			assert: func(t *testing.T, statusCode int, json utilities.Response) {
 				require.Equal(t, http.StatusBadRequest, statusCode)
 				require.Equal(t, "Validation error", json.Message)
 			},
@@ -118,7 +118,7 @@ func TestWrite(t *testing.T) {
 
 			handler.ServeHTTP(res, req)
 
-			var jsonRes utilities.RegistrationResponse
+			var jsonRes utilities.Response
 
 			json.NewDecoder(res.Body).Decode(&jsonRes)
 
@@ -141,14 +141,14 @@ func TestLogin(t *testing.T) {
 	tableTest := map[string]struct {
 		json    []byte
 		arrange func()
-		assert  func(t *testing.T, statusCode int, json utilities.RegistrationResponse)
+		assert  func(t *testing.T, statusCode int, json utilities.Response)
 	}{
 		"success": {
 			json: jsonStrValid,
 			arrange: func() {
 				csm.On("Login", mock.Anything, mock.Anything).Return("token", nil).Once()
 			},
-			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+			assert: func(t *testing.T, statusCode int, json utilities.Response) {
 				require.Equal(t, http.StatusOK, statusCode)
 				require.NotNil(t, json)
 				require.NotZero(t, json.Token)
@@ -159,7 +159,7 @@ func TestLogin(t *testing.T) {
 			arrange: func() {
 				csm.On("Login", mock.Anything, mock.Anything).Return("", errors.New("failed")).Once()
 			},
-			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+			assert: func(t *testing.T, statusCode int, json utilities.Response) {
 				require.Equal(t, http.StatusBadRequest, statusCode)
 				require.NotNil(t, json)
 				require.Zero(t, json.Token)
@@ -169,7 +169,7 @@ func TestLogin(t *testing.T) {
 		"validation failed": {
 			json:    invalidJson,
 			arrange: func() {},
-			assert: func(t *testing.T, statusCode int, json utilities.RegistrationResponse) {
+			assert: func(t *testing.T, statusCode int, json utilities.Response) {
 				require.Equal(t, http.StatusBadRequest, statusCode)
 				require.Equal(t, "Validation error", json.Message)
 			},
@@ -185,7 +185,7 @@ func TestLogin(t *testing.T) {
 
 			handler.ServeHTTP(res, req)
 
-			var jsonRes utilities.RegistrationResponse
+			var jsonRes utilities.Response
 
 			json.NewDecoder(res.Body).Decode(&jsonRes)
 
