@@ -13,7 +13,7 @@ import (
 // CredentialInterface defines the contract for credential-related operations.
 type CredentialInterface interface {
 	Write(ctx context.Context, payload models.UserPayload) (uint, error)
-	FindByUsername(ctx context.Context, username string) (*models.Credential, error)
+	FindByUsername(ctx context.Context, username string) (*models.User, error)
 	Login(ctx context.Context, payload *models.LoginPayload) (string, error)
 }
 
@@ -59,7 +59,7 @@ func (cs *CredentialService) Write(ctx context.Context, payload models.UserPaylo
 }
 
 // FindByUsername retrieves a credential by username from the repository.
-func (cs *CredentialService) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+func (cs *CredentialService) FindByUsername(ctx context.Context, username string) (*models.User, error) {
 	credential, err := cs.credRepo.FindByUsername(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find credential: %w", err)
@@ -70,18 +70,18 @@ func (cs *CredentialService) FindByUsername(ctx context.Context, username string
 // Login authenticates a user by username and password, returning a JWT if successful.
 func (cs *CredentialService) Login(ctx context.Context, payload *models.LoginPayload) (string, error) {
 	// Retrieve the credential by username.
-	credential, err := cs.FindByUsername(ctx, payload.Username)
+	user, err := cs.FindByUsername(ctx, payload.Username)
 	if err != nil {
 		return "", fmt.Errorf("authentication failed: %w", err)
 	}
 
 	// Verify the provided password matches the stored hash.
-	if err := CompareHashAndPassword(credential.Password, payload.Password); err != nil {
+	if err := CompareHashAndPassword(user.Credential.Password, payload.Password); err != nil {
 		return "", fmt.Errorf("authentication failed: %w", err)
 	}
 
 	// Generate a JWT token for the authenticated user.
-	token, err := jwttoken.GenerateJWT(credential.Username)
+	token, err := jwttoken.GenerateJWT(user.Credential.Username)
 	if err != nil {
 		return "", fmt.Errorf("authentication failed: %w", err)
 	}

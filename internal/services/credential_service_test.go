@@ -21,9 +21,9 @@ func (crm *CredRepoMock) Write(ctx context.Context, payload models.UserPayload) 
 	return uint(args.Int(0)), args.Error(1)
 }
 
-func (crm *CredRepoMock) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+func (crm *CredRepoMock) FindByUsername(ctx context.Context, username string) (*models.User, error) {
 	args := crm.Called(ctx, username)
-	return args.Get(0).(*models.Credential), args.Error(1)
+	return args.Get(0).(*models.User), args.Error(1)
 }
 
 var (
@@ -46,6 +46,11 @@ var (
 		FirstName:         "Ryan",
 		LastName:          "Pujo",
 		CredentialPayload: credentialPayload,
+	}
+	user = models.User{
+		FirstName:  "Ryan",
+		LastName:   "Pujo",
+		Credential: credential,
 	}
 )
 
@@ -113,15 +118,15 @@ func TestWriteUser(t *testing.T) {
 func TestFindByUsername(t *testing.T) {
 	tableTest := map[string]struct {
 		arrange func()
-		assert  func(t *testing.T, cred *models.Credential, err error)
+		assert  func(t *testing.T, actual *models.User, err error)
 	}{
 		"success": {
 			arrange: func() {
-				crm.On("FindByUsername", mock.Anything, mock.Anything).Return(&credential, nil).Once()
+				crm.On("FindByUsername", mock.Anything, mock.Anything).Return(&user, nil).Once()
 			},
-			assert: func(t *testing.T, cred *models.Credential, err error) {
+			assert: func(t *testing.T, actual *models.User, err error) {
 				require.NoError(t, err)
-				require.Equal(t, &credential, cred)
+				require.Equal(t, &user, actual)
 				require.True(t, crm.AssertCalled(t, "FindByUsername", context.Background(), "ryanpujo"))
 			},
 		},
@@ -146,7 +151,7 @@ func TestLogin(t *testing.T) {
 	}{
 		"success": {
 			arrange: func() {
-				crm.On("FindByUsername", mock.Anything, mock.Anything).Return(&credential, nil).Once()
+				crm.On("FindByUsername", mock.Anything, mock.Anything).Return(&user, nil).Once()
 				services.CompareHashAndPassword = func(hash, plain string) error {
 					return nil
 				}
@@ -162,7 +167,7 @@ func TestLogin(t *testing.T) {
 		"credential not found": {
 			arrange: func() {
 				crm.On("FindByUsername", mock.Anything, mock.Anything).
-					Return((*models.Credential)(nil), errors.New("failed")).Once()
+					Return((*models.User)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, jwt string, err error) {
 				require.Error(t, err)
@@ -172,7 +177,7 @@ func TestLogin(t *testing.T) {
 		},
 		"wrong password": {
 			arrange: func() {
-				crm.On("FindByUsername", mock.Anything, mock.Anything).Return(&credential, nil).Once()
+				crm.On("FindByUsername", mock.Anything, mock.Anything).Return(&user, nil).Once()
 				services.CompareHashAndPassword = func(hash, plain string) error {
 					return errors.New("wrong password")
 				}
