@@ -15,6 +15,7 @@ var db *sql.DB
 
 func GetDBConnection() *sql.DB {
 	ticker := time.NewTicker(time.Second * 3)
+	defer ticker.Stop()
 	cfg := config.Config()
 
 	counter := 0
