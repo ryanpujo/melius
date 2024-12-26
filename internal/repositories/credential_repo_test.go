@@ -33,6 +33,11 @@ var (
 		LastName:          "Pujo",
 		CredentialPayload: credentialPayload,
 	}
+	user = models.User{
+		FirstName:  "Ryan",
+		LastName:   "Pujo",
+		Credential: *credential,
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -155,34 +160,43 @@ func TestShouldCreateUserAndCredential(t *testing.T) {
 func TestFindByUsername(t *testing.T) {
 	tableTest := map[string]struct {
 		arrange func()
-		assert  func(t *testing.T, cred *models.Credential, err error)
+		assert  func(t *testing.T, actual *models.User, err error)
 	}{
 		"success": {
 			arrange: func() {
-				row := sqlmock.NewRows([]string{"email", "username", "password"}).
-					AddRow(credentialPayload.Email, credentialPayload.Username, credentialPayload.Password)
+				row := sqlmock.NewRows([]string{"first_name", "last_name", "email", "username", "password"}).
+					AddRow(
+						user.FirstName, user.LastName, user.Credential.Email, user.Credential.Username,
+						user.Credential.Password,
+					)
 
 				mock.ExpectQuery(`
-					SELECT email, username, password FROM credentials WHERE username = \$1
+					SELECT u.first_name, u.last_name, c.email, c.username, c.password
+					FROM users u
+					JOIN credentials c ON c.username = u.username
+					WHERE u.username = \$1
 				`).WithArgs(credentialPayload.Username).WillReturnRows(row)
 			},
-			assert: func(t *testing.T, cred *models.Credential, err error) {
+			assert: func(t *testing.T, actual *models.User, err error) {
 				require.NoError(t, err)
-				require.Equal(t, credential, cred)
+				require.Equal(t, &user, actual)
 			},
 		},
 		"scan failed": {
 			arrange: func() {
-				row := sqlmock.NewRows([]string{"email", "username", "password"}).
+				row := sqlmock.NewRows([]string{"first_name", "last_name", "email", "username", "password"}).
 					RowError(1, errors.New("failed to scan"))
 
 				mock.ExpectQuery(`
-					SELECT email, username, password FROM credentials WHERE username = \$1
+					SELECT u.first_name, u.last_name, c.email, c.username, c.password
+					FROM users u
+					JOIN credentials c ON c.username = u.username
+					WHERE u.username = \$1
 				`).WithArgs(credentialPayload.Username).WillReturnRows(row)
 			},
-			assert: func(t *testing.T, cred *models.Credential, err error) {
+			assert: func(t *testing.T, actual *models.User, err error) {
 				require.Error(t, err)
-				require.Nil(t, cred)
+				require.Nil(t, actual)
 			},
 		},
 	}

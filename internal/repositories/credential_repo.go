@@ -11,7 +11,7 @@ import (
 
 type CredentialInterface interface {
 	Write(ctx context.Context, payload models.UserPayload) (uint, error)
-	FindByUsername(ctx context.Context, username string) (*models.Credential, error)
+	FindByUsername(ctx context.Context, username string) (*models.User, error)
 }
 
 type CredentialRepo struct {
@@ -79,23 +79,24 @@ func (cr *CredentialRepo) Write(ctx context.Context, payload models.UserPayload)
 	return id, tx.Commit()
 }
 
-// FindByUsername retrieves a user's credentials from the database by username.
-// It returns the corresponding credential or an error if the user is not found.
-func (cr *CredentialRepo) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+func (cr *CredentialRepo) FindByUsername(ctx context.Context, username string) (*models.User, error) {
 	query := `
-		SELECT email, username, password 
-		FROM credentials
-		WHERE username = $1
+		SELECT u.first_name, u.last_name, c.email, c.username, c.password
+		FROM users u
+		JOIN credentials c ON c.username = u.username
+		WHERE u.username = $1
 	`
 
-	// Execute the query and scan the result into the credential struct
-	row := cr.dB.QueryRowContext(ctx, query, username)
-	var credential models.Credential
-	if err := row.Scan(
-		&credential.Email,
-		&credential.Username,
-		&credential.Password,
-	); err != nil {
+	var user models.User
+
+	err := cr.dB.QueryRowContext(ctx, query, username).Scan(
+		&user.FirstName,
+		&user.LastName,
+		&user.Credential.Email,
+		&user.Credential.Username,
+		&user.Credential.Password,
+	)
+	if err != nil {
 		if err == sql.ErrNoRows {
 			// Return a descriptive error if no user is found
 			return nil, fmt.Errorf("user with username '%s' not found: %w", username, err)
@@ -103,7 +104,5 @@ func (cr *CredentialRepo) FindByUsername(ctx context.Context, username string) (
 		// Return other database-related errors
 		return nil, fmt.Errorf("error retrieving user: %w", err)
 	}
-
-	// Return the populated credential struct
-	return &credential, nil
+	return &user, nil
 }
