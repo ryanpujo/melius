@@ -28,7 +28,7 @@ func (crm *CredServiceMock) Write(ctx context.Context, payload models.UserPayloa
 	return uint(args.Int(0)), args.Error(1)
 }
 
-func (csm *CredServiceMock) FindByUsername(ctx context.Context, username string) (*models.Credential, error) {
+func (csm *CredServiceMock) FindByUsername(ctx context.Context, username string) (*models.User, error) {
 	return nil, nil
 }
 
