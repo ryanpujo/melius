@@ -3,7 +3,6 @@ package services_test
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
 	"github.com/ryanpujo/melius/internal/models"
@@ -27,8 +26,6 @@ func (crm *CredRepoMock) FindByUsername(ctx context.Context, username string) (*
 }
 
 var (
-	credService       services.CredentialService
-	crm               *CredRepoMock
 	hashFunc          = services.HashPassword
 	compareFunc       = services.CompareHashAndPassword
 	credentialPayload = models.CredentialPayload{
@@ -53,12 +50,6 @@ var (
 		Credential: credential,
 	}
 )
-
-func TestMain(m *testing.M) {
-	crm = new(CredRepoMock)
-	credService = *services.NewCredentialService(crm)
-	os.Exit(m.Run())
-}
 
 func TestWriteUser(t *testing.T) {
 	tableTest := map[string]struct {
