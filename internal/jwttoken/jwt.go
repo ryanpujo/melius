@@ -1,6 +1,7 @@
 package jwttoken
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -8,7 +9,44 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ryanpujo/melius/config"
+	"github.com/ryanpujo/melius/internal/utilities"
 )
+
+type TokenVerifier interface {
+	VerifyToken(token string) (*jwt.Token, error)
+}
+
+type tokenVerif struct {
+	jwtKey string
+}
+
+func (tv *tokenVerif) VerifyToken(tokenString string) (*jwt.Token, error) {
+	token, err := jwt.Parse(strings.TrimSpace(tokenString), func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrSignatureInvalid
+		}
+		return []byte(tv.jwtKey), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	if !token.Valid {
+		return nil, errors.New("token is invalid")
+	}
+
+	claims, _ := token.Claims.(jwt.MapClaims)
+	if exp, ok := claims["exp"].(float64); ok && int64(exp) < time.Now().Unix() {
+		return nil, errors.New("token is expired")
+	}
+	return token, nil
+}
+
+func NewTokenVerif() *tokenVerif {
+	return &tokenVerif{
+		jwtKey: config.Config().JWTKey,
+	}
+}
 
 type Authenticator interface {
 	GenerateJWT(username string) (string, error)
@@ -16,19 +54,15 @@ type Authenticator interface {
 }
 
 type JWTAuth struct {
-	EXP int64
-	AUD any
-	ISS string
+	tokenVerifier TokenVerifier
 }
 
 var jwtAuth *JWTAuth
 
-func GetJWTAuth() *JWTAuth {
+func GetJWTAuth(tokenVerifier TokenVerifier) *JWTAuth {
 	if jwtAuth == nil {
 		jwtAuth = &JWTAuth{
-			EXP: int64(config.Config().JWTConfig.EXP), // Short expiration time
-			AUD: config.Config().JWTConfig.AUD,
-			ISS: config.Config().JWTConfig.ISS,
+			tokenVerifier: tokenVerifier,
 		}
 	}
 	return jwtAuth
@@ -37,9 +71,9 @@ func GetJWTAuth() *JWTAuth {
 func (auth *JWTAuth) GenerateJWT(username string) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
-		"exp":      auth.EXP,
-		"aud":      auth.AUD,
-		"iss":      auth.ISS,
+		"exp":      time.Now().Add(time.Minute * time.Duration(config.Config().JWTConfig.EXP)).Unix(),
+		"aud":      config.Config().JWTConfig.AUD,
+		"iss":      config.Config().JWTConfig.ISS,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -56,25 +90,17 @@ func (auth *JWTAuth) JWTAuthMiddleware() gin.HandlerFunc {
 		}
 		tokenString, _ := strings.CutPrefix(authHeader, "Bearer")
 
-		token, err := jwt.Parse(strings.TrimSpace(tokenString), func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, jwt.ErrSignatureInvalid
+		token, err := auth.tokenVerifier.VerifyToken(tokenString)
+		if err != nil {
+			res := utilities.Response{
+				Message: "authentication failed",
+				Err: err.Error(),
 			}
-			return []byte(config.Config().JWTKey), nil
-		})
-
-		if err != nil || !token.Valid {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-			c.Abort()
+			c.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
 		}
 
 		claims, _ := token.Claims.(jwt.MapClaims)
-		if exp, ok := claims["exp"].(float64); ok && int64(exp) < time.Now().Unix() {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token expired"})
-			c.Abort()
-			return
-		}
 
 		c.Set("username", claims["username"])
 		c.Next()

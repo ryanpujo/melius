@@ -27,7 +27,7 @@ type CredentialService struct {
 func NewCredentialService(credRepo repositories.CredentialInterface) *CredentialService {
 	return &CredentialService{
 		credRepo: credRepo,
-		jwtAuth:  jwttoken.GetJWTAuth(),
+		jwtAuth:  jwttoken.GetJWTAuth(jwttoken.NewTokenVerif()),
 	}
 }
 

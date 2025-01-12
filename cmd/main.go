@@ -12,7 +12,8 @@ func main() {
 	db := database.GetDBConnection()
 	defer db.Close()
 	registry := registry.NewRegistry(db)
-	app := application.NewApp(route.SetupRoutes(registry.NewAppControllers(), jwttoken.GetJWTAuth()))
+	auth := jwttoken.GetJWTAuth(jwttoken.NewTokenVerif())
+	app := application.NewApp(route.SetupRoutes(registry.NewAppControllers(), auth))
 
 	if err := app.Serve(); err != nil {
 		panic(err)
