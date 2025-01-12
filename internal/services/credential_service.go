@@ -20,12 +20,14 @@ type CredentialInterface interface {
 // CredentialService implements the CredentialInterface and provides business logic.
 type CredentialService struct {
 	credRepo repositories.CredentialInterface
+	jwtAuth  *jwttoken.JWTAuth
 }
 
 // NewCredentialService creates a new instance of CredentialService.
 func NewCredentialService(credRepo repositories.CredentialInterface) *CredentialService {
 	return &CredentialService{
 		credRepo: credRepo,
+		jwtAuth:  jwttoken.GetJWTAuth(),
 	}
 }
 
@@ -81,7 +83,7 @@ func (cs *CredentialService) Login(ctx context.Context, payload *models.LoginPay
 	}
 
 	// Generate a JWT token for the authenticated user.
-	token, err := jwttoken.GenerateJWT(user.Credential.Username)
+	token, err := cs.jwtAuth.GenerateJWT(user.Credential.Username)
 	if err != nil {
 		return "", fmt.Errorf("authentication failed: %w", err)
 	}

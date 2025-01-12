@@ -10,17 +10,38 @@ import (
 	"github.com/ryanpujo/melius/config"
 )
 
-func GenerateJWT(username string) (string, error) {
+type JWTAuth struct {
+	EXP int64
+	AUD any
+	ISS string
+}
+
+var jwtAuth *JWTAuth
+
+func GetJWTAuth() *JWTAuth {
+	if jwtAuth == nil {
+		jwtAuth = &JWTAuth{
+			EXP: int64(config.Config().JWTConfig.EXP), // Short expiration time
+			AUD: config.Config().JWTConfig.AUD,
+			ISS: config.Config().JWTConfig.ISS,
+		}
+	}
+	return jwtAuth
+}
+
+func (auth *JWTAuth) GenerateJWT(username string) (string, error) {
 	claims := jwt.MapClaims{
 		"username": username,
-		"exp":      time.Now().Add(15 * time.Minute).Unix(), // Short expiration time
+		"exp":      auth.EXP,
+		"aud":      auth.AUD,
+		"iss":      auth.ISS,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
 	return token.SignedString([]byte(config.Config().JWTKey))
 }
 
-func JWTAuthMiddleware() gin.HandlerFunc {
+func (auth *JWTAuth) JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
