@@ -12,7 +12,7 @@ func main() {
 	db := database.GetDBConnection()
 	defer db.Close()
 	registry := registry.NewRegistry(db)
-	auth := jwttoken.GetJWTAuth(jwttoken.NewTokenVerif())
+	auth := jwttoken.GetJWTAuth(jwttoken.NewTokenVerifier())
 	app := application.NewApp(route.SetupRoutes(registry.NewAppControllers(), auth))
 
 	if err := app.Serve(); err != nil {
