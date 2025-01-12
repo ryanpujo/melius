@@ -10,6 +10,11 @@ import (
 	"github.com/ryanpujo/melius/config"
 )
 
+type Authenticator interface {
+	GenerateJWT(username string) (string, error)
+	JWTAuthMiddleware() gin.HandlerFunc
+}
+
 type JWTAuth struct {
 	EXP int64
 	AUD any
