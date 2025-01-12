@@ -3,9 +3,16 @@ package config
 import "github.com/spf13/viper"
 
 type Configuration struct {
-	DSN    string `mapstructure:"DSN"`
-	Port   int    `mapstructure:"PORT"`
-	JWTKey string `mapstructure:"JWT_KEY"`
+	DSN       string `mapstructure:"DSN"`
+	Port      int    `mapstructure:"PORT"`
+	JWTKey    string `mapstructure:"JWT_KEY"`
+	JWTConfig jwt    `mapstructure:"JWT"`
+}
+
+type jwt struct {
+	EXP uint   `mapstructure:"EXP"`
+	AUD any    `mapstructure:"AUD"`
+	ISS string `mapstructure:"ISS"`
 }
 
 var config *Configuration
