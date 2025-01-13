@@ -1,7 +1,6 @@
 package jwttoken
 
 import (
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -31,12 +30,12 @@ func (tv *tokenVerifier) VerifyToken(tokenString string) (*jwt.Token, error) {
 		return nil, err
 	}
 	if !token.Valid {
-		return nil, errors.New("token is invalid")
+		return nil, jwt.ErrTokenNotValidYet
 	}
 
 	claims, _ := token.Claims.(jwt.MapClaims)
 	if exp, ok := claims["exp"].(float64); ok && int64(exp) < time.Now().Unix() {
-		return nil, errors.New("token is expired")
+		return nil, jwt.ErrTokenExpired
 	}
 	return token, nil
 }
