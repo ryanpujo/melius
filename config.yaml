@@ -1,3 +1,7 @@
 DSN: postgresql://ryanpujo:praim@postgres:5432/melius?connect_timeout=10
 PORT: 8080
 JWT_KEY: kekjekjnetnktnrknnekngkengkenkntnynkrnyrnyknfnghkn
+JWT:
+  EXP: 15
+  AUD: 
+  ISS:
