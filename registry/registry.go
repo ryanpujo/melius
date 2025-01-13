@@ -19,5 +19,6 @@ func NewRegistry(db *sql.DB) *Registry {
 func (r *Registry) NewAppControllers() *adapter.Adapter {
 	return &adapter.Adapter{
 		CredentialController: r.GetCredentialController(),
+		AddressController:    r.NewAddressController(),
 	}
 }
