@@ -58,6 +58,15 @@ func (auth *JWTAuth) JWTAuthMiddleware() gin.HandlerFunc {
 		}
 
 		tokenString, _ := strings.CutPrefix(authHeader, "Bearer")
+		tokenString = strings.TrimSpace(tokenString)
+		if tokenString == "" {
+			res := utilities.Response{
+				Message: "authentication failed",
+				Err:     "bearer token is empty",
+			}
+			c.AbortWithStatusJSON(http.StatusUnauthorized, res)
+			return
+		}
 
 		token, err := auth.tokenVerifier.VerifyToken(tokenString)
 		if err != nil {

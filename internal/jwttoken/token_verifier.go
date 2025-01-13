@@ -2,7 +2,6 @@ package jwttoken
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -22,7 +21,7 @@ type tokenVerifier struct {
 // VerifyToken verifies the validity of a JWT token string.
 // It checks the token's signature, validity, and expiration.
 func (tv *tokenVerifier) VerifyToken(tokenString string) (*jwt.Token, error) {
-	token, err := jwt.Parse(strings.TrimSpace(tokenString), func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
 		}
