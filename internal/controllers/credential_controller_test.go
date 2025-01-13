@@ -7,13 +7,9 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
-	"github.com/ryanpujo/melius/internal/adapter"
-	"github.com/ryanpujo/melius/internal/controllers"
 	"github.com/ryanpujo/melius/internal/models"
-	"github.com/ryanpujo/melius/internal/route"
 	"github.com/ryanpujo/melius/internal/utilities"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -35,24 +31,6 @@ func (csm *CredServiceMock) FindByUsername(ctx context.Context, username string)
 func (csm *CredServiceMock) Login(ctx context.Context, payload *models.LoginPayload) (string, error) {
 	args := csm.Called(ctx, payload)
 	return args.String(0), args.Error(1)
-}
-
-var (
-	csm     *CredServiceMock
-	handler http.Handler
-)
-
-func TestMain(m *testing.M) {
-	csm = new(CredServiceMock)
-	credController := controllers.NewCredentialController(csm)
-
-	handlerFunc := adapter.Adapter{
-		CredentialController: credController,
-	}
-
-	handler = route.SetupRoutes(&handlerFunc)
-
-	os.Exit(m.Run())
 }
 
 func TestWrite(t *testing.T) {
