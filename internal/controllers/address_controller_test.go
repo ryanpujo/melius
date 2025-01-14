@@ -1,18 +1,16 @@
 package controllers_test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"net/http/httptest"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/ryanpujo/melius/internal/models"
 	"github.com/ryanpujo/melius/internal/utilities"
+	"github.com/ryanpujo/melius/proof"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -73,13 +71,15 @@ func TestSaveCountry(t *testing.T) {
 	}
 	invalidJson, _ := json.Marshal(failed)
 	tableTest := map[string]struct {
-		token   string
-		json    []byte
-		arrange func()
-		assert  func(t *testing.T, actualCode int, res utilities.Response)
+		noHeader bool
+		token      string
+		json       []byte
+		arrange    func()
+		assert     func(t *testing.T, actualCode int, res utilities.Response)
 	}{
 		"success": {
 			token: "fhtht",
+			noHeader: false,
 			json:  jsonStr,
 			arrange: func() {
 				asm.On("SaveCountry", mock.Anything, country).Return(1, nil).Once()
@@ -94,6 +94,7 @@ func TestSaveCountry(t *testing.T) {
 		"failed": {
 			json:  jsonStr,
 			token: "dgg",
+			noHeader: false,
 			arrange: func() {
 				asm.On("SaveCountry", mock.Anything, country).Return(0, errors.New("failed")).Once()
 				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
@@ -108,6 +109,7 @@ func TestSaveCountry(t *testing.T) {
 		"validation error": {
 			token: "dfgg",
 			json:  invalidJson,
+			noHeader: false,
 			arrange: func() {
 				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 			},
@@ -120,6 +122,7 @@ func TestSaveCountry(t *testing.T) {
 		},
 		"empty bearer token": {
 			json:    jsonStr,
+			noHeader: false,
 			arrange: func() {},
 			assert: func(t *testing.T, actualCode int, res utilities.Response) {
 				require.Equal(t, http.StatusUnauthorized, actualCode)
@@ -130,8 +133,9 @@ func TestSaveCountry(t *testing.T) {
 			},
 		},
 		"token verification failed": {
-			json: jsonStr,
+			json:  jsonStr,
 			token: "ddgr",
+			noHeader: false,
 			arrange: func() {
 				jwtm.On("VerifyToken", mock.Anything).Return((*jwt.Token)(nil), errors.New("verification is failed")).Once()
 			},
@@ -143,23 +147,33 @@ func TestSaveCountry(t *testing.T) {
 				require.Equal(t, "verification is failed", res.Err)
 			},
 		},
+		"no authorization header": {
+			json: jsonStr,
+			noHeader: true,
+			arrange: func() {},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "Token is required", res.Err)
+			},
+		},
 	}
 
 	for k, v := range tableTest {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			req := httptest.NewRequest(http.MethodPost, "/auth/country", bytes.NewReader(v.json))
-			req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", v.token))
-			rec := httptest.NewRecorder()
+			res, code, err := proof.NewHttpProof(http.MethodPost,
+				"/auth/country",
+				proof.WithJSON(v.json),
+				proof.WithJWTToken(v.token),
+				proof.WithNoAuthorizationHeader(v.noHeader),
+			).RunTest(handler)
+			require.NoError(t, err)
 
-			handler.ServeHTTP(rec, req)
-
-			var res utilities.Response
-
-			json.NewDecoder(rec.Body).Decode(&res)
-
-			v.assert(t, rec.Code, res)
+			v.assert(t, code, res)
 		})
 	}
 }
