@@ -52,8 +52,11 @@ func (auth *JWTAuth) JWTAuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is required"})
-			c.Abort()
+			res := utilities.Response{
+				Message: "authentication failed",
+				Err:     "Token is required",
+			}
+			c.AbortWithStatusJSON(http.StatusUnauthorized, res)
 			return
 		}
 
