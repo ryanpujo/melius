@@ -104,7 +104,7 @@ func TestSaveCountry(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, actualCode)
 				require.NotZero(t, res)
 				require.Zero(t, res.ID)
-				require.Equal(t, "failed to record the country", res.Message)
+				require.Equal(t, "Failed to record the country", res.Message)
 			},
 		},
 		"validation error": {
@@ -222,7 +222,7 @@ func TestSaveState(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, actualCode)
 				require.NotZero(t, res)
 				require.Zero(t, res.ID)
-				require.Equal(t, "failed to record the state", res.Message)
+				require.Equal(t, "Failed to record the state", res.Message)
 			},
 		},
 		"validation error": {
@@ -252,7 +252,7 @@ func TestSaveState(t *testing.T) {
 				require.Equal(t, http.StatusBadRequest, actualCode)
 				require.NotZero(t, res)
 				require.Zero(t, res.ID)
-				require.Equal(t, "there is no country to be associated with this state", res.Message)
+				require.Equal(t, "No country associated with this state", res.Message)
 			},
 		},
 		"empty bearer token": {

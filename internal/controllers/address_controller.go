@@ -11,93 +11,105 @@ import (
 	"github.com/ryanpujo/melius/internal/utilities"
 )
 
+// AddressController defines the interface for address-related operations.
 type AddressController interface {
 	SaveCountry(c *gin.Context)
 	SaveState(c *gin.Context)
 }
 
+// addressController implements the AddressController interface.
 type addressController struct {
 	addressService services.AddressService
 }
 
+// NewAddressController creates a new instance of addressController.
 func NewAddressController(addressService services.AddressService) *addressController {
 	return &addressController{
 		addressService: addressService,
 	}
 }
 
+// SaveCountry handles the HTTP request to save a new country.
+// @param c *gin.Context - The Gin context containing request data.
 func (ac *addressController) SaveCountry(c *gin.Context) {
-	var json models.Country
-	if err := c.ShouldBindJSON(&json); err != nil {
-		res := utilities.Response{
-			Message: "Validation Error",
-			Err:     err.Error(),
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+	var country models.Country
+
+	// Validate the JSON request body.
+	if err := c.ShouldBindJSON(&country); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
+		)
 		return
 	}
 
+	// Set a context with a timeout.
 	ctx, cancel := context.WithTimeout(c, time.Second*1)
 	defer cancel()
 
-	id, err := ac.addressService.SaveCountry(ctx, json)
+	// Call the service layer to save the country.
+	id, err := ac.addressService.SaveCountry(ctx, country)
 	if err != nil {
-		res := utilities.Response{
-			Message: "failed to record the country",
-			Err:     err.Error(),
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Failed to record the country", utilities.WithErr(err.Error())),
+		)
 		return
 	}
 
-	res := utilities.Response{
-		Message: "Success",
-		ID:      id,
-	}
-	c.JSON(http.StatusCreated, res)
+	// Respond with success.
+	c.JSON(
+		http.StatusCreated,
+		utilities.NewResponse("Success", utilities.WithID(id)),
+	)
 }
 
-type uriBind struct {
-	ID uint `uri:"id"  binding:"required"`
-}
-
+// SaveState handles the HTTP request to save a new state associated with a country.
+// @param c *gin.Context - The Gin context containing request data.
 func (ac *addressController) SaveState(c *gin.Context) {
-	var json models.State
+	var state models.State
 	var uri uriBind
 
+	// Validate the URI parameters.
 	if err := c.ShouldBindUri(&uri); err != nil {
-		res := utilities.Response{
-			Message: "there is no country to be associated with this state",
-			Err:     err.Error(),
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("No country associated with this state", utilities.WithErr(err.Error())),
+		)
 		return
 	}
 
-	if err := c.ShouldBindJSON(&json); err != nil {
-		res := utilities.Response{
-			Message: "Validation Error",
-			Err:     err.Error(),
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+	// Validate the JSON request body.
+	if err := c.ShouldBindJSON(&state); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
+		)
 		return
 	}
 
+	// Set a context with a timeout.
 	ctx, cancel := context.WithTimeout(c, time.Second*1)
 	defer cancel()
 
-	id, err := ac.addressService.SaveState(ctx, json, uri.ID)
+	// Call the service layer to save the state.
+	id, err := ac.addressService.SaveState(ctx, state, uri.ID)
 	if err != nil {
-		res := utilities.Response{
-			Message: "failed to record the state",
-			Err:     err.Error(),
-		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Failed to record the state", utilities.WithErr(err.Error())),
+		)
 		return
 	}
-	res := utilities.Response{
-		Message: "Success",
-		ID:      id,
-	}
-	c.JSON(http.StatusCreated, res)
+
+	// Respond with success.
+	c.JSON(
+		http.StatusCreated,
+		utilities.NewResponse("Success", utilities.WithID(id)),
+	)
+}
+
+// uriBind represents the structure for URI parameters.
+type uriBind struct {
+	ID uint `uri:"id" binding:"required"`
 }
