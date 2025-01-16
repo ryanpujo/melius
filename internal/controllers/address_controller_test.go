@@ -317,3 +317,281 @@ func TestSaveState(t *testing.T) {
 		})
 	}
 }
+
+func TestSaveCity(t *testing.T) {
+	jsonStr, _ := json.Marshal(city)
+	failedCity := models.City{
+		Name: "jakarta",
+	}
+	invalidJson, _ := json.Marshal(&failedCity)
+	tableTest := map[string]struct {
+		pathVar  uint
+		noHeader bool
+		token    string
+		json     []byte
+		arrange  func()
+		assert   func(t *testing.T, actualCode int, res utilities.Response)
+	}{
+		"success": {
+			pathVar:  1,
+			token:    "ghfththth",
+			json:     jsonStr,
+			noHeader: false,
+			arrange: func() {
+				asm.On("SaveCity", mock.Anything, city, uint(1)).Return(1, nil).Once()
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusCreated, actualCode)
+				require.NotZero(t, res)
+				require.Equal(t, uint(1), res.ID)
+				jwtm.AssertCalled(t, "VerifyToken", "ghfththth")
+			},
+		},
+		"failed": {
+			pathVar:  1,
+			token:    "dgdrjrngk",
+			json:     jsonStr,
+			noHeader: false,
+			arrange: func() {
+				asm.On("SaveCity", mock.Anything, city, uint(1)).Return(0, errors.New("failed")).Once()
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusBadRequest, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "Failed to record the city", res.Message)
+			},
+		},
+		"validation error": {
+			json:     invalidJson,
+			token:    "dgrgrg",
+			pathVar:  1,
+			noHeader: false,
+			arrange: func() {
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusBadRequest, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "Validation Error", res.Message)
+			},
+		},
+		"no path variable": {
+			pathVar: 0,
+			json: jsonStr,
+			token: "dgrgrg",
+			noHeader: false,
+			arrange: func() {
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusBadRequest, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "No state associated with this city", res.Message)
+			},
+		},
+		"empty bearer token": {
+			token: "",
+			pathVar: 1,
+			noHeader: false,
+			json: jsonStr,
+			arrange: func() {},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "bearer token is empty", res.Err)
+			},
+		},
+		"no authorization header": {
+			pathVar: 1,
+			noHeader: true,
+			token: "",
+			json: jsonStr,
+			arrange: func() {},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "Token is required", res.Err)
+			},
+		},
+		"failed to verify token": {
+			pathVar: 1,
+			noHeader: false,
+			token: "dgrgrg",
+			json: jsonStr,
+			arrange: func() {
+				jwtm.On("VerifyToken", mock.Anything).Return((*jwt.Token)(nil), errors.New("failed to verify")).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "failed to verify", res.Err)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			res, code, err := proof.NewHttpProof(http.MethodPost,
+				fmt.Sprintf("/auth/city/%d", v.pathVar),
+				proof.WithJSON(v.json),
+				proof.WithJWTToken(v.token),
+				proof.WithNoAuthorizationHeader(v.noHeader),
+			).RunTest(handler)
+			require.NoError(t, err)
+
+			v.assert(t, code, res)
+		})
+	}
+}
+
+func TestSaveAddress(t *testing.T) {
+	jsonStr, _ := json.Marshal(address)
+	failedAddress := models.Address{
+		AddressLine: "dgrgrgrg",
+	}
+	invalidJson, _ := json.Marshal(&failedAddress)
+	tableTest := map[string]struct {
+		pathVar  uint
+		noHeader bool
+		token    string
+		json     []byte
+		arrange  func()
+		assert   func(t *testing.T, actualCode int, res utilities.Response)
+	}{
+		"success": {
+			pathVar:  1,
+			token:    "ghfththth",
+			json:     jsonStr,
+			noHeader: false,
+			arrange: func() {
+				asm.On("SaveAddress", mock.Anything, address, uint(1)).Return(1, nil).Once()
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusCreated, actualCode)
+				require.NotZero(t, res)
+				require.Equal(t, uint(1), res.ID)
+				jwtm.AssertCalled(t, "VerifyToken", "ghfththth")
+			},
+		},
+		"failed": {
+			pathVar:  1,
+			token:    "dgdrjrngk",
+			json:     jsonStr,
+			noHeader: false,
+			arrange: func() {
+				asm.On("SaveAddress", mock.Anything, address, uint(1)).Return(0, errors.New("failed")).Once()
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusBadRequest, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "Failed to record the address", res.Message)
+			},
+		},
+		"validation error": {
+			json:     invalidJson,
+			token:    "dgrgrg",
+			pathVar:  1,
+			noHeader: false,
+			arrange: func() {
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusBadRequest, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "Validation Error", res.Message)
+			},
+		},
+		"no path variable": {
+			pathVar: 0,
+			json: jsonStr,
+			token: "dgrgrg",
+			noHeader: false,
+			arrange: func() {
+				jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusBadRequest, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "No city associated with this address", res.Message)
+			},
+		},
+		"empty bearer token": {
+			token: "",
+			pathVar: 1,
+			noHeader: false,
+			json: jsonStr,
+			arrange: func() {},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "bearer token is empty", res.Err)
+			},
+		},
+		"no authorization header": {
+			pathVar: 1,
+			noHeader: true,
+			token: "",
+			json: jsonStr,
+			arrange: func() {},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "Token is required", res.Err)
+			},
+		},
+		"failed to verify token": {
+			pathVar: 1,
+			noHeader: false,
+			token: "dgrgrg",
+			json: jsonStr,
+			arrange: func() {
+				jwtm.On("VerifyToken", mock.Anything).Return((*jwt.Token)(nil), errors.New("failed to verify")).Once()
+			},
+			assert: func(t *testing.T, actualCode int, res utilities.Response) {
+				require.Equal(t, http.StatusUnauthorized, actualCode)
+				require.NotZero(t, res)
+				require.Zero(t, res.ID)
+				require.Equal(t, "authentication failed", res.Message)
+				require.Equal(t, "failed to verify", res.Err)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			res, code, err := proof.NewHttpProof(http.MethodPost,
+				fmt.Sprintf("/auth/address/%d", v.pathVar),
+				proof.WithJSON(v.json),
+				proof.WithJWTToken(v.token),
+				proof.WithNoAuthorizationHeader(v.noHeader),
+			).RunTest(handler)
+			require.NoError(t, err)
+
+			v.assert(t, code, res)
+		})
+	}
+}

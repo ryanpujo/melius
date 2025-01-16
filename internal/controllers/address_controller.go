@@ -15,6 +15,8 @@ import (
 type AddressController interface {
 	SaveCountry(c *gin.Context)
 	SaveState(c *gin.Context)
+	SaveCity(c *gin.Context)
+	SaveAddress(c *gin.Context)
 }
 
 // addressController implements the AddressController interface.
@@ -98,6 +100,92 @@ func (ac *addressController) SaveState(c *gin.Context) {
 		c.AbortWithStatusJSON(
 			http.StatusBadRequest,
 			utilities.NewResponse("Failed to record the state", utilities.WithErr(err.Error())),
+		)
+		return
+	}
+
+	// Respond with success.
+	c.JSON(
+		http.StatusCreated,
+		utilities.NewResponse("Success", utilities.WithID(id)),
+	)
+}
+
+func (ac *addressController) SaveCity(c *gin.Context) {
+	var city models.City
+	var uri uriBind
+
+	// Validate the URI parameters.
+	if err := c.ShouldBindUri(&uri); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("No state associated with this city", utilities.WithErr(err.Error())),
+		)
+		return
+	}
+
+	// Validate the JSON request body.
+	if err := c.ShouldBindJSON(&city); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
+		)
+		return
+	}
+
+	// Set a context with a timeout.
+	ctx, cancel := context.WithTimeout(c, time.Second*1)
+	defer cancel()
+
+	// Call the service layer to save the city.
+	id, err := ac.addressService.SaveCity(ctx, city, uri.ID)
+	if err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Failed to record the city", utilities.WithErr(err.Error())),
+		)
+		return
+	}
+
+	// Respond with success.
+	c.JSON(
+		http.StatusCreated,
+		utilities.NewResponse("Success", utilities.WithID(id)),
+	)
+}
+
+func (ac *addressController) SaveAddress(c *gin.Context) {
+	var address models.Address
+	var uri uriBind
+
+	// Validate the URI parameters.
+	if err := c.ShouldBindUri(&uri); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("No city associated with this address", utilities.WithErr(err.Error())),
+		)
+		return
+	}
+
+	// Validate the JSON request body.
+	if err := c.ShouldBindJSON(&address); err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
+		)
+		return
+	}
+
+	// Set a context with a timeout.
+	ctx, cancel := context.WithTimeout(c, time.Second*1)
+	defer cancel()
+
+	// Call the service layer to save the address.
+	id, err := ac.addressService.SaveAddress(ctx, address, uri.ID)
+	if err != nil {
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			utilities.NewResponse("Failed to record the address", utilities.WithErr(err.Error())),
 		)
 		return
 	}

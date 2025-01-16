@@ -7,4 +7,6 @@ import (
 func addressRoute(addressController controllers.AddressController) {
 	protected.POST("/country", addressController.SaveCountry)
 	protected.POST("/state/:id", addressController.SaveState)
+	protected.POST("/city/:id", addressController.SaveCity)
+	protected.POST("/address/:id", addressController.SaveAddress)
 }
