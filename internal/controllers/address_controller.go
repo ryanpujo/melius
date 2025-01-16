@@ -13,6 +13,7 @@ import (
 
 type AddressController interface {
 	SaveCountry(c *gin.Context)
+	SaveState(c *gin.Context)
 }
 
 type addressController struct {
@@ -49,6 +50,51 @@ func (ac *addressController) SaveCountry(c *gin.Context) {
 		return
 	}
 
+	res := utilities.Response{
+		Message: "Success",
+		ID:      id,
+	}
+	c.JSON(http.StatusCreated, res)
+}
+
+type uriBind struct {
+	ID uint `uri:"id"  binding:"required"`
+}
+
+func (ac *addressController) SaveState(c *gin.Context) {
+	var json models.State
+	var uri uriBind
+
+	if err := c.ShouldBindUri(&uri); err != nil {
+		res := utilities.Response{
+			Message: "there is no country to be associated with this state",
+			Err:     err.Error(),
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	if err := c.ShouldBindJSON(&json); err != nil {
+		res := utilities.Response{
+			Message: "Validation Error",
+			Err:     err.Error(),
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c, time.Second*1)
+	defer cancel()
+
+	id, err := ac.addressService.SaveState(ctx, json, uri.ID)
+	if err != nil {
+		res := utilities.Response{
+			Message: "failed to record the state",
+			Err:     err.Error(),
+		}
+		c.AbortWithStatusJSON(http.StatusBadRequest, res)
+		return
+	}
 	res := utilities.Response{
 		Message: "Success",
 		ID:      id,
