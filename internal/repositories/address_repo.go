@@ -13,6 +13,7 @@ type AddressRepo interface {
 	SaveState(ctx context.Context, state models.State, countryID uint, tx *sql.Tx) (uint, error)
 	SaveCity(ctx context.Context, city models.City, stateID uint, tx *sql.Tx) (uint, error)
 	SaveAddress(ctx context.Context, address models.Address, cityID uint, tx *sql.Tx) (uint, error)
+	SaveCompleteAddress(ctx context.Context, address models.Address) (uint, error)
 }
 
 // addressRepo is the implementation of the AddressRepo interface.
@@ -90,4 +91,35 @@ func (ar *addressRepo) SaveAddress(ctx context.Context, address models.Address, 
 		address.IsMain,
 		cityID,
 	)
+}
+
+
+func (ar *addressRepo) SaveCompleteAddress(ctx context.Context, address models.Address) (uint, error) {
+	tx, err := ar.db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	countryID, err := ar.SaveCountry(ctx, address.City.State.Country, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	stateID, err := ar.SaveState(ctx, address.City.State, countryID, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	cityID, err := ar.SaveCity(ctx, address.City, stateID, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	addressID, err := ar.SaveAddress(ctx, address, cityID, tx)
+	if err != nil {
+		return 0, err
+	}
+
+	return addressID, tx.Commit()
 }
