@@ -4,25 +4,49 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 	"testing"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ryanpujo/melius/internal/models"
 	"github.com/stretchr/testify/require"
 )
 
 var (
-	country = models.Country{
+	countryPayload = &models.CountryPayload{
+		Name:  "Indonesia",
+		State: &statePayload,
+	}
+	country = &models.Country{
+		ID:   1,
 		Name: "Indonesia",
 	}
-	state = models.State{
-		Name:    "Jakarta",
-		Country: country,
+
+	statePayload = models.StatePayload{
+		Name: "Jakarta",
+		City: &cityPayload,
 	}
-	city = models.City{
-		Name:  "Jakarta Timur",
-		State: state,
+	state = &models.State{
+		ID:   1,
+		Name: "Jakarta",
 	}
-	address = models.Address{
+
+	cityPayload = models.CityPayload{
+		Name:    "Jakarta Timur",
+		Address: &addressPayload,
+	}
+	city = &models.City{
+		ID:   1,
+		Name: "Jakarta Timur",
+	}
+
+	addressPayload = models.AddressPayload{
+		AddressLine: "jl. mayjen sutoyo kel. cawang kec kramat jati rt.007/011",
+		PostalCode:  "12630",
+		IsMain:      true,
+		CityID:      uint(1),
+	}
+	address = &models.Address{
 		AddressLine: "jl. mayjen sutoyo kel. cawang kec kramat jati rt.007/011",
 		PostalCode:  "12630",
 		IsMain:      true,
@@ -34,20 +58,20 @@ func TestSaveCountry(t *testing.T) {
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualCountry *models.Country, err error)
 	}{
 		"success with no tx": {
 			tx: func() *sql.Tx {
 				return nil
 			},
 			arrange: func() {
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
+				row := mock.NewRows([]string{"id", "name"}).AddRow(country.ID, country.Name)
+				mock.ExpectQuery("INSERT INTO countries").WithArgs(countryPayload.Name).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountry *models.Country, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, country, actualCountry)
 			},
 		},
 		"succes with tx": {
@@ -58,13 +82,13 @@ func TestSaveCountry(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
+				row := mock.NewRows([]string{"id", "name"}).AddRow(country.ID, country.Name)
+				mock.ExpectQuery("INSERT INTO countries").WithArgs(countryPayload.Name).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountry *models.Country, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, country, actualCountry)
 			},
 		},
 		"row error": {
@@ -76,12 +100,12 @@ func TestSaveCountry(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
+				mock.ExpectQuery("INSERT INTO countries").WithArgs(countryPayload.Name).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountry *models.Country, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualCountry)
 			},
 		},
 	}
@@ -90,7 +114,7 @@ func TestSaveCountry(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressRepo.SaveCountry(context.Background(), country, v.tx())
+			id, err := addressRepo.SaveCountry(context.Background(), countryPayload, v.tx())
 
 			v.assert(t, id, err)
 		})
@@ -103,20 +127,20 @@ func TestSaveState(t *testing.T) {
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualState *models.State, err error)
 	}{
 		"success with no tx": {
 			tx: func() *sql.Tx {
 				return nil
 			},
 			arrange: func() {
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 2).
+				row := mock.NewRows([]string{"id", "name"}).AddRow(state.ID, state.Name)
+				mock.ExpectQuery("INSERT INTO states").WithArgs(statePayload.Name, 2).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualState *models.State, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, state, actualState)
 			},
 		},
 		"succes with tx": {
@@ -127,13 +151,13 @@ func TestSaveState(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 2).
+				row := mock.NewRows([]string{"id", "name"}).AddRow(state.ID, state.Name)
+				mock.ExpectQuery("INSERT INTO states").WithArgs(statePayload.Name, 2).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualState *models.State, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, actualState, actualState)
 			},
 		},
 		"row error": {
@@ -145,12 +169,12 @@ func TestSaveState(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 2).
+				mock.ExpectQuery("INSERT INTO states").WithArgs(statePayload.Name, 2).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualState *models.State, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualState)
 			},
 		},
 	}
@@ -159,7 +183,7 @@ func TestSaveState(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressRepo.SaveState(context.Background(), state, 2, v.tx())
+			id, err := addressRepo.SaveState(context.Background(), &statePayload, 2, v.tx())
 
 			v.assert(t, id, err)
 		})
@@ -172,20 +196,20 @@ func TestSaveCity(t *testing.T) {
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualCity *models.City, err error)
 	}{
 		"success with no tx": {
 			tx: func() *sql.Tx {
 				return nil
 			},
 			arrange: func() {
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(city.Name, 2).
+				row := mock.NewRows([]string{"id", "name"}).AddRow(city.ID, city.Name)
+				mock.ExpectQuery("INSERT INTO cities").WithArgs(cityPayload.Name, 2).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCity *models.City, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, city, actualCity)
 			},
 		},
 		"succes with tx": {
@@ -196,13 +220,13 @@ func TestSaveCity(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(city.Name, 2).
+				row := mock.NewRows([]string{"id", "name"}).AddRow(city.ID, city.Name)
+				mock.ExpectQuery("INSERT INTO cities").WithArgs(cityPayload.Name, 2).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCity *models.City, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, city, actualCity)
 			},
 		},
 		"row error": {
@@ -214,12 +238,12 @@ func TestSaveCity(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(city.Name, 2).
+				mock.ExpectQuery("INSERT INTO cities").WithArgs(cityPayload.Name, 2).
 					WillReturnRows(row)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCity *models.City, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualCity)
 			},
 		},
 	}
@@ -228,38 +252,140 @@ func TestSaveCity(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressRepo.SaveCity(context.Background(), city, 2, v.tx())
+			id, err := addressRepo.SaveCity(context.Background(), &cityPayload, 2, v.tx())
 
 			v.assert(t, id, err)
 		})
 	}
 	err := mock.ExpectationsWereMet()
 	require.NoError(t, err)
+}
+
+func getCityByIDQuery(cityID int) *sqlmock.ExpectedQuery {
+	row := mock.NewRows([]string{"id", "name", "id", "name", "id", "name"}).
+		AddRow(
+			city.ID, city.Name,
+			state.ID, state.Name,
+			country.ID, country.Name,
+		)
+	query := `
+		SELECT c.id, c.name, 
+		s.id, s.name, 
+		co.id, co.name 
+		FROM cities c
+		JOIN states s ON s.id = c.state_id
+		JOIN countries co ON co.id = s.country_id
+		WHERE c.id = $1
+	`
+	query = regexp.QuoteMeta(query)
+	return mock.ExpectQuery(query).WithArgs(cityID).WillReturnRows(row)
+}
+
+func TestGetCityByID(t *testing.T) {
+	state = &models.State{
+		ID:      1,
+		Name:    "Jakarta",
+		Country: country,
+	}
+	city := &models.City{
+		ID:    1,
+		Name:  "Jakarta Timur",
+		State: state,
+	}
+	tableTest := map[string]struct {
+		arrange func()
+		assert  func(t *testing.T, actualCity *models.City, err error)
+	}{
+		"success": {
+			arrange: func() {
+				getCityByIDQuery(1)
+			},
+			assert: func(t *testing.T, actualCity *models.City, err error) {
+				require.NoError(t, err)
+				require.Equal(t, city, actualCity)
+			},
+		},
+		"scan error": {
+			arrange: func() {
+				getCityByIDQuery(1).WillReturnError(errors.New("failed"))
+			},
+			assert: func(t *testing.T, actualCity *models.City, err error) {
+				require.Error(t, err)
+				require.Zero(t, actualCity)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			actual, err := addressRepo.GetCityByID(context.Background(), 1)
+
+			v.assert(t, actual, err)
+		})
+	}
+	err := mock.ExpectationsWereMet()
+	require.NoError(t, err)
+}
+
+func saveAddressMockExpectation() *sqlmock.ExpectedQuery {
+	query := `
+		INSERT INTO addresses (address_line, postal_code, is_main, city_id) 
+		VALUES ($1, $2, $3, $4) 
+		RETURNING id, address_line, postal_code, is_main, city_id
+	`
+	query = regexp.QuoteMeta(query)
+	row := mock.NewRows([]string{"id", "address_line", "postal_code", "is_main", "city_id"}).AddRow(
+		1,
+		address.AddressLine,
+		address.PostalCode,
+		address.IsMain,
+		address.City.ID,
+	)
+	return mock.ExpectQuery(query).WithArgs(
+		addressPayload.AddressLine,
+		addressPayload.PostalCode,
+		addressPayload.IsMain,
+		address.City.ID,
+	).
+		WillReturnRows(row)
 }
 
 func TestSaveAddress(t *testing.T) {
+	state = &models.State{
+		ID:      1,
+		Name:    "Jakarta",
+		Country: country,
+	}
+	city := &models.City{
+		ID:    1,
+		Name:  "Jakarta Timur",
+		State: state,
+	}
+	address = &models.Address{
+		ID:          1,
+		AddressLine: "jl. mayjen sutoyo kel. cawang kec kramat jati rt.007/011",
+		PostalCode:  "12630",
+		IsMain:      true,
+		City:        city,
+	}
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualAddress *models.Address, err error)
 	}{
 		"success with no tx": {
 			tx: func() *sql.Tx {
 				return nil
 			},
 			arrange: func() {
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO addresses").WithArgs(
-					address.AddressLine,
-					address.PostalCode,
-					address.IsMain,
-					2,
-				).
-					WillReturnRows(row)
+				saveAddressMockExpectation()
+				getCityByIDQuery(1)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, address, actualAddress)
 			},
 		},
 		"succes with tx": {
@@ -270,18 +396,12 @@ func TestSaveAddress(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				row := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO addresses").WithArgs(
-					address.AddressLine,
-					address.PostalCode,
-					address.IsMain,
-					2,
-				).
-					WillReturnRows(row)
+				saveAddressMockExpectation()
+				getCityByIDQuery(1)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.Equal(t, address, actualAddress)
 			},
 		},
 		"row error": {
@@ -292,18 +412,24 @@ func TestSaveAddress(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO addresses").WithArgs(
-					address.AddressLine,
-					address.PostalCode,
-					address.IsMain,
-					2,
-				).
-					WillReturnRows(row)
+				saveAddressMockExpectation().WillReturnError(errors.New("failed"))
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualAddress)
+			},
+		},
+		"error finding city": {
+			tx: func() *sql.Tx {
+				return nil
+			},
+			arrange: func() {
+				saveAddressMockExpectation()
+				getCityByIDQuery(1).WillReturnError(errors.New("failed"))
+			},
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
+				require.Error(t, err)
+				require.Zero(t, actualAddress)
 			},
 		},
 	}
@@ -312,7 +438,7 @@ func TestSaveAddress(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressRepo.SaveAddress(context.Background(), address, 2, v.tx())
+			id, err := addressRepo.SaveAddress(context.Background(), &addressPayload, v.tx())
 
 			v.assert(t, id, err)
 		})
@@ -321,119 +447,62 @@ func TestSaveAddress(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestSaveCompleteAddress(t *testing.T) {
+func TestGetCountries(t *testing.T) {
+	expectedQuery := regexp.QuoteMeta(`
+		SELECT
+			c.id, c.name,
+			s.id, s.name,
+			ci.id, ci.name
+		FROM countries c 
+		JOIN states s ON c.id = s.country_id
+		JOIN cities ci ON s.id = ci.state_id
+		ORDER BY c.name, s.name, ci.name
+	`)
+
 	tableTest := map[string]struct {
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualCountries []*models.Country, err error)
 	}{
-		"succes Save complete address": {
+		"success": {
 			arrange: func() {
-				mock.ExpectBegin()
-				rowCountry := mock.NewRows([]string{"id"}).AddRow(1)
-				rowState := mock.NewRows([]string{"id"}).AddRow(1)
-				rowCity := mock.NewRows([]string{"id"}).AddRow(1)
-				rowAddress := mock.NewRows([]string{"id"}).AddRow(1)
+				rows := sqlmock.NewRows([]string{"id", "name", "id", "name", "id", "name"}).
+					AddRow(1, "USA", 10, "California", 100, "Los Angeles").
+					AddRow(1, "USA", 10, "California", 101, "San Francisco").
+					AddRow(2, "Canada", 20, "Ontario", 200, "Toronto")
 
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
-					WillReturnRows(rowCountry)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 1).
-					WillReturnRows(rowState)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(city.Name, 1).
-					WillReturnRows(rowCity)
-				mock.ExpectQuery("INSERT INTO addresses").WithArgs(
-					address.AddressLine,
-					address.PostalCode,
-					address.IsMain,
-					1,
-				).
-					WillReturnRows(rowAddress)
-				mock.ExpectCommit()
+				// Expect the query to be executed and return our rows.
+				mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountries []*models.Country, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
+				require.NotNil(t, actualCountries)
+				require.Len(t, actualCountries, 2)
+				require.Len(t, actualCountries[1].States[0].Cities, 2)
+				require.Equal(t, "Canada", actualCountries[0].Name)
 			},
 		},
-		"failed to save country": {
+		"scan error": {
 			arrange: func() {
-				mock.ExpectBegin()
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
-					WillReturnError(errors.New("failed to save country"))
-			},
-			assert: func(t *testing.T, actualID uint, err error) {
-				require.Error(t, err)
-				require.Zero(t, actualID)
-				require.Equal(t, "failed to save country", err.Error())
-			},
-		},
-		"failed to save state": {
-			arrange: func() {
-				mock.ExpectBegin()
-				rowCountry := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
-					WillReturnRows(rowCountry)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 1).
-					WillReturnError(errors.New("failed to save state"))
-			},
-			assert: func(t *testing.T, actualID uint, err error) {
-				require.Error(t, err)
-				require.Zero(t, actualID)
-				require.Equal(t, "failed to save state", err.Error())
-			},
-		},
-		"failed to save city": {
-			arrange: func() {
-				mock.ExpectBegin()
-				rowCountry := mock.NewRows([]string{"id"}).AddRow(1)
-				rowState := mock.NewRows([]string{"id"}).AddRow(1)
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
-					WillReturnRows(rowCountry)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 1).
-					WillReturnRows(rowState)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(city.Name, 1).
-					WillReturnError(errors.New("failed to save city"))
-			},
-			assert: func(t *testing.T, actualID uint, err error) {
-				require.Error(t, err)
-				require.Zero(t, actualID)
-				require.Equal(t, "failed to save city", err.Error())
-			},
-		},
-		"failed to save complete address": {
-			arrange: func() {
-				mock.ExpectBegin()
-				rowCountry := mock.NewRows([]string{"id"}).AddRow(1)
-				rowState := mock.NewRows([]string{"id"}).AddRow(1)
-				rowCity := mock.NewRows([]string{"id"}).AddRow(1)
+				rows := sqlmock.NewRows([]string{"id", "name", "id", "name", "id", "name"}).
+					AddRow(1, "USA", 10, "California", "sffe", "Los Angeles").
+					AddRow(1, "USA", 10, "California", 101, "San Francisco").
+					AddRow(2, "Canada", 20, "Ontario", 200, "Toronto")
 
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(country.Name).
-					WillReturnRows(rowCountry)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(state.Name, 1).
-					WillReturnRows(rowState)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(city.Name, 1).
-					WillReturnRows(rowCity)
-				mock.ExpectQuery("INSERT INTO addresses").WithArgs(
-					address.AddressLine,
-					address.PostalCode,
-					address.IsMain,
-					1,
-				).
-					WillReturnError(errors.New("failed to save complete address"))
+				// Expect the query to be executed and return our rows.
+				mock.ExpectQuery(expectedQuery).WillReturnRows(rows)
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountries []*models.Country, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
-				require.Equal(t, "failed to save complete address", err.Error())
+				require.Nil(t, actualCountries)
 			},
 		},
-		"failed to start a transaction": {
+		"query error": {
 			arrange: func() {
-				mock.ExpectBegin().WillReturnError(errors.New("failed to start a transaction"))
+				mock.ExpectQuery(expectedQuery).WillReturnError(errors.New("failed"))
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountries []*models.Country, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
-				require.Equal(t, "failed to start a transaction", err.Error())
+				require.Nil(t, actualCountries)
 			},
 		},
 	}
@@ -442,11 +511,11 @@ func TestSaveCompleteAddress(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressRepo.SaveCompleteAddress(context.Background(), address)
+			countries, err := addressRepo.GetCountries(context.Background())
 
-			v.assert(t, id, err)
-			err = mock.ExpectationsWereMet()
-			require.NoError(t, err)
+			v.assert(t, countries, err)
 		})
 	}
+	err := mock.ExpectationsWereMet()
+	require.NoError(t, err)
 }
