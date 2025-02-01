@@ -15,39 +15,71 @@ type addressRepoMock struct {
 	mock.Mock
 }
 
-func (ar *addressRepoMock) SaveCountry(ctx context.Context, country models.Country, tx *sql.Tx) (uint, error) {
+func (ar *addressRepoMock) SaveCountry(ctx context.Context, country *models.CountryPayload, tx *sql.Tx) (*models.Country, error) {
 	args := ar.Called(ctx, country, tx)
-	return uint(args.Int(0)), args.Error(1)
+	return args.Get(0).(*models.Country), args.Error(1)
 }
 
-func (ar *addressRepoMock) SaveState(ctx context.Context, state models.State, countryID uint, tx *sql.Tx) (uint, error) {
+func (ar *addressRepoMock) SaveState(ctx context.Context, state *models.StatePayload, countryID uint, tx *sql.Tx) (*models.State, error) {
 	args := ar.Called(ctx, state, countryID, tx)
-	return uint(args.Int(0)), args.Error(1)
+	return args.Get(0).(*models.State), args.Error(1)
 }
 
-func (ar *addressRepoMock) SaveCity(ctx context.Context, city models.City, stateID uint, tx *sql.Tx) (uint, error) {
+func (ar *addressRepoMock) SaveCity(ctx context.Context, city *models.CityPayload, stateID uint, tx *sql.Tx) (*models.City, error) {
 	args := ar.Called(ctx, city, stateID, tx)
-	return uint(args.Int(0)), args.Error(1)
+	return args.Get(0).(*models.City), args.Error(1)
 }
 
-func (ar *addressRepoMock) SaveAddress(ctx context.Context, address models.Address, cityID uint, tx *sql.Tx) (uint, error) {
-	args := ar.Called(ctx, address, cityID, tx)
-	return uint(args.Int(0)), args.Error(1)
+func (ar *addressRepoMock) SaveAddress(ctx context.Context, address *models.AddressPayload, tx *sql.Tx) (*models.Address, error) {
+	args := ar.Called(ctx, address, tx)
+	return args.Get(0).(*models.Address), args.Error(1)
+}
+
+func (ar *addressRepoMock) GetCountries(ctx context.Context) ([]*models.Country, error) {
+	args := ar.Called(ctx)
+	return args.Get(0).([]*models.Country), args.Error(1)
+}
+
+func (ar *addressRepoMock) GetCityByID(ctx context.Context, cityID uint) (*models.City, error) {
+	args := ar.Called(ctx, cityID)
+	return args.Get(0).(*models.City), args.Error(1)
 }
 
 var (
-	country = models.Country{
+	countryPayload = &models.CountryPayload{
+		Name:  "Indonesia",
+		State: &statePayload,
+	}
+	country = &models.Country{
+		ID:   1,
 		Name: "Indonesia",
 	}
-	state = models.State{
-		Name:    "Jakarta",
-		Country: country,
+
+	statePayload = models.StatePayload{
+		Name: "Jakarta",
+		City: &cityPayload,
 	}
-	city = models.City{
-		Name:  "Jakarta Timur",
-		State: state,
+	state = &models.State{
+		ID:   1,
+		Name: "Jakarta",
 	}
-	address = models.Address{
+
+	cityPayload = models.CityPayload{
+		Name:    "Jakarta Timur",
+		Address: &addressPayload,
+	}
+	city = &models.City{
+		ID:   1,
+		Name: "Jakarta Timur",
+	}
+
+	addressPayload = models.AddressPayload{
+		AddressLine: "jl. mayjen sutoyo kel. cawang kec kramat jati rt.007/011",
+		PostalCode:  "12630",
+		IsMain:      true,
+		CityID:      uint(1),
+	}
+	address = &models.Address{
 		AddressLine: "jl. mayjen sutoyo kel. cawang kec kramat jati rt.007/011",
 		PostalCode:  "12630",
 		IsMain:      true,
@@ -58,26 +90,26 @@ var (
 func TestSaveCountry(t *testing.T) {
 	tableTest := map[string]struct {
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualCountry *models.Country, err error)
 	}{
 		"succes": {
 			arrange: func() {
-				arm.On("SaveCountry", mock.Anything, country, (*sql.Tx)(nil)).Return(1, nil).Once()
+				arm.On("SaveCountry", mock.Anything, countryPayload, (*sql.Tx)(nil)).Return(country, nil).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountry *models.Country, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
-				arm.AssertCalled(t, "SaveCountry", context.Background(), country, (*sql.Tx)(nil))
+				require.Equal(t, country, actualCountry)
+				arm.AssertCalled(t, "SaveCountry", context.Background(), countryPayload, (*sql.Tx)(nil))
 			},
 		},
 		"failed": {
 			arrange: func() {
-				arm.On("SaveCountry", mock.Anything, country, (*sql.Tx)(nil)).Return(0, errors.New("failed")).Once()
+				arm.On("SaveCountry", mock.Anything, countryPayload, (*sql.Tx)(nil)).Return((*models.Country)(nil), errors.New("failed")).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCountry *models.Country, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
-				arm.AssertCalled(t, "SaveCountry", context.Background(), country, (*sql.Tx)(nil))
+				require.Zero(t, actualCountry)
+				arm.AssertCalled(t, "SaveCountry", context.Background(), countryPayload, (*sql.Tx)(nil))
 			},
 		},
 	}
@@ -86,9 +118,9 @@ func TestSaveCountry(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressService.SaveCountry(context.Background(), country)
+			country, err := addressService.SaveCountry(context.Background(), countryPayload)
 
-			v.assert(t, id, err)
+			v.assert(t, country, err)
 		})
 	}
 }
@@ -97,36 +129,37 @@ func TestSaveState(t *testing.T) {
 	tableTest := map[string]struct {
 		countryID uint
 		arrange   func()
-		assert    func(t *testing.T, actualID uint, err error)
+		assert    func(t *testing.T, actualState *models.State, err error)
 	}{
 		"success": {
 			countryID: 1,
 			arrange: func() {
-				arm.On("SaveState", mock.Anything, state, uint(1), (*sql.Tx)(nil)).Return(1, nil).Once()
+				arm.On("SaveState", mock.Anything, &statePayload, uint(1), (*sql.Tx)(nil)).Return(state, nil).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualState *models.State, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
-				arm.AssertCalled(t, "SaveState", context.Background(), state, uint(1), (*sql.Tx)(nil))
+				require.Equal(t, state, actualState)
+				arm.AssertCalled(t, "SaveState", context.Background(), &statePayload, uint(1), (*sql.Tx)(nil))
 			},
 		},
 		"failed": {
 			countryID: 1,
 			arrange: func() {
-				arm.On("SaveState", mock.Anything, state, uint(1), (*sql.Tx)(nil)).Return(0, errors.New("failed")).Once()
+				arm.On("SaveState", mock.Anything, &statePayload, uint(1), (*sql.Tx)(nil)).
+					Return((*models.State)(nil), errors.New("failed")).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualState *models.State, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
-				arm.AssertCalled(t, "SaveState", context.Background(), state, uint(1), (*sql.Tx)(nil))
+				require.Zero(t, actualState)
+				arm.AssertCalled(t, "SaveState", context.Background(), &statePayload, uint(1), (*sql.Tx)(nil))
 			},
 		},
 		"empty country id": {
 			countryID: 0,
 			arrange:   func() {},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualState *models.State, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualState)
 				require.Equal(t, "country ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveState")
 			},
@@ -137,9 +170,9 @@ func TestSaveState(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressService.SaveState(context.Background(), state, v.countryID)
+			state, err := addressService.SaveState(context.Background(), &statePayload, v.countryID)
 
-			v.assert(t, id, err)
+			v.assert(t, state, err)
 		})
 	}
 }
@@ -148,36 +181,37 @@ func TestSaveCity(t *testing.T) {
 	tableTest := map[string]struct {
 		stateID uint
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualCity *models.City, err error)
 	}{
 		"success": {
 			stateID: 1,
 			arrange: func() {
-				arm.On("SaveCity", mock.Anything, city, uint(1), (*sql.Tx)(nil)).Return(1, nil).Once()
+				arm.On("SaveCity", mock.Anything, &cityPayload, uint(1), (*sql.Tx)(nil)).Return(city, nil).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCity *models.City, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
-				arm.AssertCalled(t, "SaveCity", context.Background(), city, uint(1), (*sql.Tx)(nil))
+				require.Equal(t, city, actualCity)
+				arm.AssertCalled(t, "SaveCity", context.Background(), &cityPayload, uint(1), (*sql.Tx)(nil))
 			},
 		},
 		"failed": {
 			stateID: 1,
 			arrange: func() {
-				arm.On("SaveCity", mock.Anything, city, uint(1), (*sql.Tx)(nil)).Return(0, errors.New("failed")).Once()
+				arm.On("SaveCity", mock.Anything, &cityPayload, uint(1), (*sql.Tx)(nil)).
+					Return((*models.City)(nil), errors.New("failed")).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCity *models.City, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
-				arm.AssertCalled(t, "SaveCity", context.Background(), city, uint(1), (*sql.Tx)(nil))
+				require.Zero(t, actualCity)
+				arm.AssertCalled(t, "SaveCity", context.Background(), &cityPayload, uint(1), (*sql.Tx)(nil))
 			},
 		},
 		"empty country id": {
 			stateID: 0,
 			arrange: func() {},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualCity *models.City, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualCity)
 				require.Equal(t, "state ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveCity")
 			},
@@ -188,9 +222,9 @@ func TestSaveCity(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressService.SaveCity(context.Background(), city, v.stateID)
+			city, err := addressService.SaveCity(context.Background(), &cityPayload, v.stateID)
 
-			v.assert(t, id, err)
+			v.assert(t, city, err)
 		})
 	}
 }
@@ -199,36 +233,38 @@ func TestSaveAddress(t *testing.T) {
 	tableTest := map[string]struct {
 		cityID  uint
 		arrange func()
-		assert  func(t *testing.T, actualID uint, err error)
+		assert  func(t *testing.T, actualAddress *models.Address, err error)
 	}{
 		"success": {
 			cityID: 1,
 			arrange: func() {
-				arm.On("SaveAddress", mock.Anything, address, uint(1), (*sql.Tx)(nil)).Return(1, nil).Once()
+				arm.On("SaveAddress", mock.Anything, &addressPayload, (*sql.Tx)(nil)).
+					Return(address, nil).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.NoError(t, err)
-				require.Equal(t, uint(1), actualID)
-				arm.AssertCalled(t, "SaveAddress", context.Background(), address, uint(1), (*sql.Tx)(nil))
+				require.Equal(t, address, actualAddress)
+				arm.AssertCalled(t, "SaveAddress", context.Background(), &addressPayload, (*sql.Tx)(nil))
 			},
 		},
 		"failed": {
 			cityID: 1,
 			arrange: func() {
-				arm.On("SaveAddress", mock.Anything, address, uint(1), (*sql.Tx)(nil)).Return(0, errors.New("failed")).Once()
+				arm.On("SaveAddress", mock.Anything, &addressPayload, (*sql.Tx)(nil)).
+					Return((*models.Address)(nil), errors.New("failed")).Once()
 			},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
-				arm.AssertCalled(t, "SaveAddress", context.Background(), address, uint(1), (*sql.Tx)(nil))
+				require.Zero(t, actualAddress)
+				arm.AssertCalled(t, "SaveAddress", context.Background(), &addressPayload, (*sql.Tx)(nil))
 			},
 		},
 		"empty country id": {
 			cityID:  0,
 			arrange: func() {},
-			assert: func(t *testing.T, actualID uint, err error) {
+			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.Error(t, err)
-				require.Zero(t, actualID)
+				require.Zero(t, actualAddress)
 				require.Equal(t, "city ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveAddress")
 			},
@@ -239,9 +275,97 @@ func TestSaveAddress(t *testing.T) {
 		t.Run(k, func(t *testing.T) {
 			v.arrange()
 
-			id, err := addressService.SaveAddress(context.Background(), address, v.cityID)
+			addressPayload.CityID = v.cityID
+			address, err := addressService.SaveAddress(context.Background(), &addressPayload)
 
-			v.assert(t, id, err)
+			v.assert(t, address, err)
+		})
+	}
+}
+
+func TestGetCountries(t *testing.T) {
+	tableTest := map[string]struct {
+		arrange func()
+		assert  func(t *testing.T, actualCountries []*models.Country, err error)
+	}{
+		"success": {
+			arrange: func() {
+				arm.On("GetCountries", mock.Anything).Return([]*models.Country{country}, nil).Once()
+			},
+			assert: func(t *testing.T, actualCountries []*models.Country, err error) {
+				require.NoError(t, err)
+				require.NotNil(t, actualCountries)
+				require.Len(t, actualCountries, 1)
+				require.Equal(t, country, actualCountries[0])
+			},
+		},
+		"failed": {
+			arrange: func() {
+				arm.On("GetCountries", mock.Anything).Return(([]*models.Country)(nil), errors.New("failed")).Once()
+			},
+			assert: func(t *testing.T, actualCountries []*models.Country, err error) {
+				require.Error(t, err)
+				require.Zero(t, actualCountries)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			countries, err := addressService.GetCountries(context.Background())
+
+			v.assert(t, countries, err)
+		})
+	}
+}
+
+func TestGetCityByID(t *testing.T) {
+	tableTest := map[string]struct {
+		cityID  uint
+		arrange func()
+		assert  func(t *testing.T, actualCity *models.City, err error)
+	}{
+		"success": {
+			cityID: 1,
+			arrange: func() {
+				arm.On("GetCityByID", mock.Anything, uint(1)).Return(city, nil).Once()
+			},
+			assert: func(t *testing.T, actualCity *models.City, err error) {
+				require.NoError(t, err)
+				require.NotZero(t, actualCity)
+				require.Equal(t, city, actualCity)
+			},
+		},
+		"failed": {
+			cityID: 1,
+			arrange: func() {
+				arm.On("GetCityByID", mock.Anything, uint(1)).
+					Return((*models.City)(nil), errors.New("failed")).Once()
+			},
+			assert: func(t *testing.T, actualCity *models.City, err error) {
+				require.Error(t, err)
+				require.Zero(t, actualCity)
+			},
+		},
+		"empty city id": {
+			arrange: func() {},
+			assert: func(t *testing.T, actualCity *models.City, err error) {
+				require.Error(t, err)
+				require.Zero(t, actualCity)
+				arm.AssertNotCalled(t, "GetCityByID")
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			actualCity, err := addressService.GetCityByID(context.Background(), v.cityID)
+
+			v.assert(t, actualCity, err)
 		})
 	}
 }
