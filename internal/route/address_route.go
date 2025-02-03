@@ -5,8 +5,13 @@ import (
 )
 
 func addressRoute(addressController controllers.AddressController) {
-	protected.POST("/country", addressController.SaveCountry)
-	protected.POST("/state/:id", addressController.SaveState)
-	protected.POST("/city/:id", addressController.SaveCity)
-	protected.POST("/address/:id", addressController.SaveAddress)
+	protectedApiV1.POST("/country", addressController.SaveCountry)
+	protectedApiV1.GET("/country", addressController.GetCountries)
+
+	protectedApiV1.POST("/state/:id", addressController.SaveState)
+
+	protectedApiV1.POST("/city/:id", addressController.SaveCity)
+	protectedApiV1.GET("/city/:id", addressController.GetCityByID)
+
+	protectedApiV1.POST("/address", addressController.SaveAddress)
 }

@@ -8,12 +8,13 @@ import (
 	"github.com/ryanpujo/melius/internal/jwttoken"
 )
 var router = gin.Default()
-var protected = router.Group("/auth")
+var apiV1 = router.Group("/api/v1")
+var protectedApiV1 = apiV1.Group("/auth")
 // SetupRoutes initializes and returns a Gin engine with defined routes.
 func SetupRoutes(handlers *adapter.Adapter, auth jwttoken.Authenticator) *gin.Engine {
-	protected.Use(auth.JWTAuthMiddleware())
+	protectedApiV1.Use(auth.JWTAuthMiddleware())
 	// Define a simple GET route
-	protected.GET("/", func(ctx *gin.Context) {
+	protectedApiV1.GET("/", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello, World!")
 	})
 
