@@ -54,7 +54,6 @@ func (asm *addressServiceMock) GetCityByID(ctx context.Context, cityID uint) (*m
 var (
 	countryPayload = &models.CountryPayload{
 		Name:  "Indonesia",
-		State: &statePayload,
 	}
 	country = &models.Country{
 		ID:   1,
@@ -63,7 +62,6 @@ var (
 
 	statePayload = models.StatePayload{
 		Name: "Jakarta",
-		City: &cityPayload,
 	}
 	state = &models.State{
 		ID:   1,
@@ -72,7 +70,6 @@ var (
 
 	cityPayload = models.CityPayload{
 		Name:    "Jakarta Timur",
-		Address: &addressPayload,
 	}
 	city = &models.City{
 		ID:   1,
