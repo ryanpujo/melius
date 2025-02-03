@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/ryanpujo/melius/config"
 	"github.com/ryanpujo/melius/internal/utilities"
 )
 
@@ -41,8 +42,8 @@ func WithJWTToken(token string) proofFunc {
 
 func NewHttpProof(httpMethod string, uri string, opts ...proofFunc) *httpProof {
 	proof := &httpProof{
-		httpMethod: httpMethod,
-		uri:        uri,
+		httpMethod:            httpMethod,
+		uri:                   uri,
 		noAuthorizationHeader: false,
 	}
 
@@ -60,7 +61,9 @@ func (hp *httpProof) RunTest(handler http.Handler) (utilities.Response, int, err
 		reader = bytes.NewReader(hp.JSON)
 	}
 
-	req, err := http.NewRequest(hp.httpMethod, hp.uri, reader)
+	fullURI := fmt.Sprintf("%s%s", config.Config().BaseRoute, hp.uri)
+
+	req, err := http.NewRequest(hp.httpMethod, fullURI, reader)
 	if err != nil {
 		return utilities.Response{}, 0, err
 	}
