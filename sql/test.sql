@@ -26,15 +26,17 @@ CREATE TABLE countries (
 -- State Table
 CREATE TABLE states (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    country_id INT NOT NULL REFERENCES countries(id) ON DELETE CASCADE
+    name VARCHAR(255) NOT NULL,
+    country_id INT NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+    UNIQUE (name, country_id)
 );
 
 -- City Table
 CREATE TABLE cities (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL UNIQUE,
-    state_id INT NOT NULL REFERENCES states(id) ON DELETE CASCADE
+    name VARCHAR(255) NOT NULL,
+    state_id INT NOT NULL REFERENCES states(id) ON DELETE CASCADE,
+    UNIQUE (name, state_id)
 );
 
 -- Address Table
@@ -47,6 +49,7 @@ CREATE TABLE addresses (
 );
 
 CREATE TABLE user_address (
-    address_id INT NOT NULL REFERENCES addresses(id) ON DELETE CASCADE
+    address_id INT NOT NULL REFERENCES addresses(id) ON DELETE CASCADE,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+    PRIMARY KEY (address_id, user_id)
 );
