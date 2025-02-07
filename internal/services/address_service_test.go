@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ryanpujo/melius/internal/models"
+	"github.com/ryanpujo/melius/internal/utilities"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -155,9 +156,12 @@ func TestSaveState(t *testing.T) {
 			countryID: 0,
 			arrange:   func() {},
 			assert: func(t *testing.T, actualState *models.State, err error) {
+				var appErr *utilities.AppError
 				require.Error(t, err)
+				require.ErrorAs(t, err, &appErr)
+				require.Equal(t, utilities.ValidationError, appErr.Code)
+				require.Equal(t, "country ID can't be empty", appErr.Message)
 				require.Zero(t, actualState)
-				require.Equal(t, "country ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveState")
 			},
 		},
@@ -207,9 +211,12 @@ func TestSaveCity(t *testing.T) {
 			stateID: 0,
 			arrange: func() {},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
+				var appErr *utilities.AppError
 				require.Error(t, err)
+				require.ErrorAs(t, err, &appErr)
+				require.Equal(t, utilities.ValidationError, appErr.Code)
+				require.Equal(t, "state ID can't be empty", appErr.Message)
 				require.Zero(t, actualCity)
-				require.Equal(t, "state ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveCity")
 			},
 		},
@@ -260,9 +267,12 @@ func TestSaveAddress(t *testing.T) {
 			cityID:  0,
 			arrange: func() {},
 			assert: func(t *testing.T, actualAddress *models.Address, err error) {
+				var appErr *utilities.AppError
 				require.Error(t, err)
+				require.ErrorAs(t, err, &appErr)
+				require.Equal(t, utilities.ValidationError, appErr.Code)
+				require.Equal(t, "city ID can't be empty", appErr.Message)
 				require.Zero(t, actualAddress)
-				require.Equal(t, "city ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveAddress")
 			},
 		},
@@ -349,7 +359,11 @@ func TestGetCityByID(t *testing.T) {
 		"empty city id": {
 			arrange: func() {},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
+				var appErr *utilities.AppError
 				require.Error(t, err)
+				require.ErrorAs(t, err, &appErr)
+				require.Equal(t, utilities.ValidationError, appErr.Code)
+				require.Equal(t, "city ID can't be empty", appErr.Message)
 				require.Zero(t, actualCity)
 				arm.AssertNotCalled(t, "GetCityByID")
 			},

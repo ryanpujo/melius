@@ -2,10 +2,10 @@ package services
 
 import (
 	"context"
-	"errors"
 
 	"github.com/ryanpujo/melius/internal/models"
 	"github.com/ryanpujo/melius/internal/repositories"
+	"github.com/ryanpujo/melius/internal/utilities"
 )
 
 type AddressService interface {
@@ -45,7 +45,7 @@ func (as *addressService) GetCountries(ctx context.Context) ([]*models.Country, 
 // Returns the generated state ID and any error encountered during the operation.
 func (as *addressService) SaveState(ctx context.Context, state *models.StatePayload, countryID uint) (*models.State, error) {
 	if countryID == 0 {
-		return nil, errors.New("country ID cannot be empty")
+		return nil, utilities.NewAppError(utilities.ValidationError, "country ID can't be empty", nil)
 	}
 	return as.addressRepo.SaveState(ctx, state, countryID, nil)
 }
@@ -56,14 +56,14 @@ func (as *addressService) SaveState(ctx context.Context, state *models.StatePayl
 // Returns the generated city ID and any error encountered during the operation.
 func (as *addressService) SaveCity(ctx context.Context, city *models.CityPayload, stateID uint) (*models.City, error) {
 	if stateID == 0 {
-		return nil, errors.New("state ID cannot be empty")
+		return nil, utilities.NewAppError(utilities.ValidationError, "state ID can't be empty", nil)
 	}
 	return as.addressRepo.SaveCity(ctx, city, stateID, nil)
 }
 
 func (as *addressService) GetCityByID(ctx context.Context, cityID uint) (*models.City, error) {
 	if cityID == 0 {
-		return nil, errors.New("city id cannot be empty")
+		return nil, utilities.NewAppError(utilities.ValidationError, "city ID can't be empty", nil)
 	}
 
 	return as.addressRepo.GetCityByID(ctx, cityID)
@@ -75,7 +75,7 @@ func (as *addressService) GetCityByID(ctx context.Context, cityID uint) (*models
 // Returns the generated address ID and any error encountered during the operation.
 func (as *addressService) SaveAddress(ctx context.Context, address *models.AddressPayload) (*models.Address, error) {
 	if address.CityID == 0 {
-		return nil, errors.New("city ID cannot be empty")
+		return nil, utilities.NewAppError(utilities.ValidationError, "city ID can't be empty", nil)
 	}
 	return as.addressRepo.SaveAddress(ctx, address, nil)
 }
