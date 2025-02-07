@@ -70,6 +70,19 @@ func TestHandleError(t *testing.T) {
 				)
 			},
 		},
+		"the app error itself": {
+			err: utilities.NewAppError(utilities.ValidationError, "country id can't be empty", nil),
+			assert: func(t *testing.T, err error) {
+				require.Error(t, err)
+				var appErr *utilities.AppError
+				require.ErrorAs(t, err, &appErr)
+				require.Equal(t, utilities.ValidationError, appErr.Code)
+				require.Equal(t,
+					"country id can't be empty",
+					appErr.Message,
+				)
+			},
+		},
 	}
 
 	for k, v := range tableTest {

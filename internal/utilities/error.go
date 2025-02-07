@@ -139,6 +139,8 @@ func HandleError(err error) *AppError {
 			"There was a problem with your request. Please double-check your input and try again.",
 			err,
 		)
+	// check if the error is itself an AppError
+	case errors.As(err, &appErr):
 	// Fallback for all other errors.
 	default:
 		appErr = NewAppError(
