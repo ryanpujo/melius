@@ -2,10 +2,10 @@ package services
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ryanpujo/melius/internal/models"
 	"github.com/ryanpujo/melius/internal/repositories"
-	"github.com/ryanpujo/melius/internal/utilities"
 )
 
 type AddressService interface {
@@ -32,19 +32,11 @@ func NewAddressService(addressRepo repositories.AddressRepo) *addressService {
 // It takes the context and a Country model as parameters.
 // Returns the generated country ID and any error encountered during the operation.
 func (as *addressService) SaveCountry(ctx context.Context, country *models.CountryPayload) (*models.Country, error) {
-	createdCCountry, err := as.addressRepo.SaveCountry(ctx, country, nil)
-	if err != nil {
-		return nil, utilities.HandleError(err)
-	}
-	return createdCCountry, nil
+	return as.addressRepo.SaveCountry(ctx, country, nil)
 }
 
 func (as *addressService) GetCountries(ctx context.Context) ([]*models.Country, error) {
-	countries, err := as.addressRepo.GetCountries(ctx)
-	if err != nil {
-		return nil, utilities.HandleError(err)
-	}
-	return countries, nil
+	return as.addressRepo.GetCountries(ctx)
 }
 
 // SaveState saves a state to the repository.
@@ -53,13 +45,9 @@ func (as *addressService) GetCountries(ctx context.Context) ([]*models.Country, 
 // Returns the generated state ID and any error encountered during the operation.
 func (as *addressService) SaveState(ctx context.Context, state *models.StatePayload, countryID uint) (*models.State, error) {
 	if countryID == 0 {
-		return nil, utilities.NewAppError(utilities.NotNullViolation, "country ID cannot be empty", nil)
+		return nil, errors.New("country ID cannot be empty")
 	}
-	createdState, err := as.addressRepo.SaveState(ctx, state, countryID, nil)
-	if err != nil {
-		return nil, utilities.HandleError(err)
-	}
-	return createdState, nil
+	return as.addressRepo.SaveState(ctx, state, countryID, nil)
 }
 
 // SaveCity saves a city to the repository.
@@ -68,26 +56,17 @@ func (as *addressService) SaveState(ctx context.Context, state *models.StatePayl
 // Returns the generated city ID and any error encountered during the operation.
 func (as *addressService) SaveCity(ctx context.Context, city *models.CityPayload, stateID uint) (*models.City, error) {
 	if stateID == 0 {
-		return nil, utilities.NewAppError(utilities.NotNullViolation, "state ID cannot be empty", nil)
+		return nil, errors.New("state ID cannot be empty")
 	}
-	createdCity, err := as.addressRepo.SaveCity(ctx, city, stateID, nil)
-	if err != nil {
-		return nil, utilities.HandleError(err)
-	}
-	return createdCity, nil
+	return as.addressRepo.SaveCity(ctx, city, stateID, nil)
 }
 
 func (as *addressService) GetCityByID(ctx context.Context, cityID uint) (*models.City, error) {
 	if cityID == 0 {
-		return nil, utilities.NewAppError(utilities.NotNullViolation, "city id cant be empty", nil)
+		return nil, errors.New("city id cannot be empty")
 	}
 
-	city, err := as.addressRepo.GetCityByID(ctx, cityID)
-	if err != nil {
-		return nil, utilities.HandleError(err)
-	}
-
-	return city, nil
+	return as.addressRepo.GetCityByID(ctx, cityID)
 }
 
 // SaveAddress saves an address to the repository.
@@ -96,11 +75,7 @@ func (as *addressService) GetCityByID(ctx context.Context, cityID uint) (*models
 // Returns the generated address ID and any error encountered during the operation.
 func (as *addressService) SaveAddress(ctx context.Context, address *models.AddressPayload) (*models.Address, error) {
 	if address.CityID == 0 {
-		return nil, utilities.NewAppError(utilities.NotNullViolation, "city ID cannot be empty", nil)
+		return nil, errors.New("city ID cannot be empty")
 	}
-	createdAddress, err := as.addressRepo.SaveAddress(ctx, address, nil)
-	if err != nil {
-		return nil, utilities.HandleError(err)
-	}
-	return createdAddress, nil
+	return as.addressRepo.SaveAddress(ctx, address, nil)
 }

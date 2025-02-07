@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/ryanpujo/melius/internal/models"
-	"github.com/ryanpujo/melius/internal/utilities"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -102,14 +101,10 @@ func TestSaveCountry(t *testing.T) {
 		},
 		"failed": {
 			arrange: func() {
-				arm.On("SaveCountry", mock.Anything, countryPayload, (*sql.Tx)(nil)).
-				Return((*models.Country)(nil), errors.New("failed")).Once()
+				arm.On("SaveCountry", mock.Anything, countryPayload, (*sql.Tx)(nil)).Return((*models.Country)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, actualCountry *models.Country, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.InternalServerError, appErr.Code)
 				require.Zero(t, actualCountry)
 				arm.AssertCalled(t, "SaveCountry", context.Background(), countryPayload, (*sql.Tx)(nil))
 			},
@@ -151,10 +146,7 @@ func TestSaveState(t *testing.T) {
 					Return((*models.State)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, actualState *models.State, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.InternalServerError, appErr.Code)
 				require.Zero(t, actualState)
 				arm.AssertCalled(t, "SaveState", context.Background(), &statePayload, uint(1), (*sql.Tx)(nil))
 			},
@@ -163,11 +155,9 @@ func TestSaveState(t *testing.T) {
 			countryID: 0,
 			arrange:   func() {},
 			assert: func(t *testing.T, actualState *models.State, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.NotNullViolation, appErr.Code)
 				require.Zero(t, actualState)
+				require.Equal(t, "country ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveState")
 			},
 		},
@@ -208,23 +198,18 @@ func TestSaveCity(t *testing.T) {
 					Return((*models.City)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.InternalServerError, appErr.Code)
 				require.Zero(t, actualCity)
 				arm.AssertCalled(t, "SaveCity", context.Background(), &cityPayload, uint(1), (*sql.Tx)(nil))
 			},
 		},
-		"empty state id": {
+		"empty country id": {
 			stateID: 0,
 			arrange: func() {},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.NotNullViolation, appErr.Code)
 				require.Zero(t, actualCity)
+				require.Equal(t, "state ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveCity")
 			},
 		},
@@ -266,23 +251,18 @@ func TestSaveAddress(t *testing.T) {
 					Return((*models.Address)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, actualAddress *models.Address, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.InternalServerError, appErr.Code)
 				require.Zero(t, actualAddress)
 				arm.AssertCalled(t, "SaveAddress", context.Background(), &addressPayload, (*sql.Tx)(nil))
 			},
 		},
-		"empty city id": {
+		"empty country id": {
 			cityID:  0,
 			arrange: func() {},
 			assert: func(t *testing.T, actualAddress *models.Address, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.NotNullViolation, appErr.Code)
 				require.Zero(t, actualAddress)
+				require.Equal(t, "city ID cannot be empty", err.Error())
 				arm.AssertNotCalled(t, "SaveAddress")
 			},
 		},
@@ -321,10 +301,7 @@ func TestGetCountries(t *testing.T) {
 				arm.On("GetCountries", mock.Anything).Return(([]*models.Country)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, actualCountries []*models.Country, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.InternalServerError, appErr.Code)
 				require.Zero(t, actualCountries)
 			},
 		},
@@ -365,20 +342,14 @@ func TestGetCityByID(t *testing.T) {
 					Return((*models.City)(nil), errors.New("failed")).Once()
 			},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.InternalServerError, appErr.Code)
 				require.Zero(t, actualCity)
 			},
 		},
 		"empty city id": {
 			arrange: func() {},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
-				var appErr *utilities.AppError
 				require.Error(t, err)
-				require.ErrorAs(t, err, &appErr)
-				require.Equal(t, utilities.NotNullViolation, appErr.Code)
 				require.Zero(t, actualCity)
 				arm.AssertNotCalled(t, "GetCityByID")
 			},
