@@ -12,6 +12,8 @@ type AddressService interface {
 	SaveCountry(ctx context.Context, country *models.CountryPayload) (*models.Country, error)
 	SaveState(ctx context.Context, state *models.StatePayload, countryID uint) (*models.State, error)
 	SaveCity(ctx context.Context, city *models.CityPayload, stateID uint) (*models.City, error)
+
+	CreateUserAddress(ctx context.Context, address *models.AddressPayload, userID uint) (*models.Address, error)
 	SaveAddress(ctx context.Context, address *models.AddressPayload) (*models.Address, error)
 
 	GetCountries(ctx context.Context) ([]*models.Country, error)
@@ -78,4 +80,12 @@ func (as *addressService) SaveAddress(ctx context.Context, address *models.Addre
 		return nil, utilities.NewAppError(utilities.ValidationError, "city ID can't be empty", nil)
 	}
 	return as.addressRepo.SaveAddress(ctx, address, nil)
+}
+
+func (as *addressService) CreateUserAddress(ctx context.Context, address *models.AddressPayload, userID uint) (*models.Address, error) {
+	if userID == 0 {
+		return nil, utilities.NewAppError(utilities.ValidationError, "user ID can't be empty", nil)
+	}
+
+	return as.addressRepo.CreateUserAddress(ctx, address, userID)
 }

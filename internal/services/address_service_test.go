@@ -46,6 +46,11 @@ func (ar *addressRepoMock) GetCityByID(ctx context.Context, cityID uint) (*model
 	return args.Get(0).(*models.City), args.Error(1)
 }
 
+func (ar *addressRepoMock) CreateUserAddress(ctx context.Context, address *models.AddressPayload, userID uint) (*models.Address, error) {
+	args := ar.Called(ctx, address, userID)
+	return args.Get(0).(*models.Address), args.Error(1)
+}
+
 var (
 	countryPayload = &models.CountryPayload{
 		Name:  "Indonesia",
@@ -377,6 +382,56 @@ func TestGetCityByID(t *testing.T) {
 			actualCity, err := addressService.GetCityByID(context.Background(), v.cityID)
 
 			v.assert(t, actualCity, err)
+		})
+	}
+}
+
+func TestCreateUserAddress(t *testing.T) {
+	tableTest := map[string]struct{
+		userID uint
+		arrange func()
+		assert func(t *testing.T, actual *models.Address, err error)
+	}{
+		"success": {
+			userID: 1,
+			arrange: func() {
+				arm.On("CreateUserAddress", mock.Anything, &addressPayload, uint(1)).Return(address, nil).Once()
+			},
+			assert: func(t *testing.T, actual *models.Address, err error) {
+				require.NoError(t, err)
+				require.Equal(t, address, actual)
+			},
+		},
+		"failed": {
+			userID: 1,
+			arrange: func() {
+				arm.On("CreateUserAddress", mock.Anything, &addressPayload, uint(1)).
+				Return((*models.Address)(nil), errors.New("failed")).Once()
+			},
+			assert: func(t *testing.T, actual *models.Address, err error) {
+				require.Error(t, err)
+				require.Zero(t, actual)
+			},
+		},
+		"validation error": {
+			arrange: func() {},
+			assert: func(t *testing.T, actual *models.Address, err error) {
+				var appErr *utilities.AppError
+				require.Error(t, err)
+				require.ErrorAs(t, err, &appErr)
+				require.Equal(t, utilities.ValidationError, appErr.Code)
+				require.Zero(t, actual)
+			},
+		},
+	}
+
+	for k, v := range tableTest {
+		t.Run(k, func(t *testing.T) {
+			v.arrange()
+
+			actual, err := addressService.CreateUserAddress(context.Background(), &addressPayload, v.userID)
+
+			v.assert(t, actual, err)
 		})
 	}
 }
