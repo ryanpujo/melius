@@ -14,8 +14,9 @@ type AddressRepo interface {
 	SaveCountry(ctx context.Context, country *models.CountryPayload, tx *sql.Tx) (*models.Country, error)
 	SaveState(ctx context.Context, state *models.StatePayload, countryID uint, tx *sql.Tx) (*models.State, error)
 	SaveCity(ctx context.Context, city *models.CityPayload, stateID uint, tx *sql.Tx) (*models.City, error)
+
+	CreateUserAddress(ctx context.Context, address *models.AddressPayload, userID uint) (*models.Address, error)
 	SaveAddress(ctx context.Context, address *models.AddressPayload, tx *sql.Tx) (*models.Address, error)
-	// SaveCompleteAddress(ctx context.Context, address models.Address) (uint, error)
 
 	GetCountries(ctx context.Context) ([]*models.Country, error)
 	GetCityByID(ctx context.Context, cityID uint) (*models.City, error)
@@ -241,4 +242,28 @@ func (ar *addressRepo) SaveAddress(ctx context.Context, address *models.AddressP
 	createdAddress.City = city
 
 	return &createdAddress, nil
+}
+
+func (ar *addressRepo) CreateUserAddress(ctx context.Context, address *models.AddressPayload, userID uint) (*models.Address, error) {
+	tx, err := ar.db.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	query := `
+		INSERT INTO user_address (address_id, user_id) VALUES ($1, $2)
+	`
+
+	createdAddress, err := ar.SaveAddress(ctx, address, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	row := tx.QueryRowContext(ctx, query, createdAddress.ID, userID)
+	if err := row.Err(); err != nil {
+		return nil, err
+	}
+
+	return createdAddress, tx.Commit()
 }
