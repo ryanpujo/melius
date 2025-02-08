@@ -313,7 +313,7 @@ func TestSaveState(t *testing.T) {
 			v.arrange()
 
 			res, code, err := proof.NewHttpProof(http.MethodPost,
-				fmt.Sprintf("%s%s", authURI, fmt.Sprintf("/state/%d", v.pathVar)),
+				fmt.Sprintf("%s/country/%d/add-state", authURI, v.pathVar),
 				proof.WithJSON(v.json),
 				proof.WithJWTToken(v.token),
 				proof.WithNoAuthorizationHeader(v.noHeader),
@@ -403,7 +403,7 @@ func TestSaveCity(t *testing.T) {
 			v.arrange()
 
 			res, code, err := proof.NewHttpProof(http.MethodPost,
-				fmt.Sprintf("%s%s", authURI, fmt.Sprintf("/city/%d", v.pathVar)),
+				fmt.Sprintf("%s/state/%d/add-city", authURI, v.pathVar),
 				proof.WithJSON(v.json),
 				proof.WithJWTToken(v.token),
 				proof.WithNoAuthorizationHeader(v.noHeader),

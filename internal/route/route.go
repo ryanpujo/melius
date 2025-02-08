@@ -18,6 +18,8 @@ func SetupRoutes(handlers *adapter.Adapter, auth jwttoken.Authenticator) *gin.En
 		ctx.String(http.StatusOK, "Hello, World!")
 	})
 
+	protectedApiV1.POST("/user/:id/add-address", handlers.AddressController.CreateUserAddress)
+
 	addressRoute(handlers.AddressController)
 	router.POST("/regis", handlers.CredentialController.Write)
 	router.POST("/login", handlers.CredentialController.Login)
