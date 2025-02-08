@@ -16,6 +16,8 @@ type AddressController interface {
 	SaveCountry(c *gin.Context)
 	SaveState(c *gin.Context)
 	SaveCity(c *gin.Context)
+
+	CreateUserAddress(c *gin.Context)
 	SaveAddress(c *gin.Context)
 
 	GetCountries(c *gin.Context)
@@ -197,6 +199,33 @@ func (ac *addressController) GetCityByID(c *gin.Context) {
 func handleError(c *gin.Context, err error) {
 	appErr := utilities.HandleError(err)
 	c.AbortWithStatusJSON(appErr.Code.HTTPStatus(), utilities.NewResponse(appErr.Message))
+}
+
+func (ac *addressController) CreateUserAddress(c *gin.Context) {
+	var address models.AddressPayload
+	var uri uriBind
+
+	if err := c.ShouldBindUri(&uri); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	// Validate the JSON request body.
+	if err := c.ShouldBindJSON(&address); err != nil {
+		handleError(c, err)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c.Request.Context(), time.Second*1)
+	defer cancel()
+
+	createdAddress, err := ac.addressService.CreateUserAddress(ctx, &address, uri.ID)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, utilities.NewResponse("success", utilities.WithAddress(createdAddress)))
 }
 
 // uriBind represents the structure for URI parameters.
