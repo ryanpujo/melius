@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"net/http"
 	"time"
 
@@ -43,10 +41,7 @@ func (ac *addressController) SaveCountry(c *gin.Context) {
 
 	// Validate the JSON request body.
 	if err := c.ShouldBindJSON(&country); err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -57,10 +52,7 @@ func (ac *addressController) SaveCountry(c *gin.Context) {
 	// Call the service layer to save the country.
 	createdCountry, err := ac.addressService.SaveCountry(ctx, &country)
 	if err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Failed to record the country", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -79,19 +71,13 @@ func (ac *addressController) SaveState(c *gin.Context) {
 
 	// Validate the URI parameters.
 	if err := c.ShouldBindUri(&uri); err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("No country associated with this state", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
 	// Validate the JSON request body.
 	if err := c.ShouldBindJSON(&state); err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -102,10 +88,7 @@ func (ac *addressController) SaveState(c *gin.Context) {
 	// Call the service layer to save the state.
 	createdState, err := ac.addressService.SaveState(ctx, &state, uri.ID)
 	if err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Failed to record the state", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -122,19 +105,13 @@ func (ac *addressController) SaveCity(c *gin.Context) {
 
 	// Validate the URI parameters.
 	if err := c.ShouldBindUri(&uri); err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("No state associated with this city", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
 	// Validate the JSON request body.
 	if err := c.ShouldBindJSON(&city); err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -145,10 +122,7 @@ func (ac *addressController) SaveCity(c *gin.Context) {
 	// Call the service layer to save the city.
 	createdCity, err := ac.addressService.SaveCity(ctx, &city, uri.ID)
 	if err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Failed to record the city", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -164,10 +138,7 @@ func (ac *addressController) SaveAddress(c *gin.Context) {
 
 	// Validate the JSON request body.
 	if err := c.ShouldBindJSON(&address); err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Validation Error", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -178,10 +149,7 @@ func (ac *addressController) SaveAddress(c *gin.Context) {
 	// Call the service layer to save the address.
 	createdAddress, err := ac.addressService.SaveAddress(ctx, &address)
 	if err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Failed to record the address", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -199,10 +167,7 @@ func (ac *addressController) GetCountries(c *gin.Context) {
 
 	countries, err := ac.addressService.GetCountries(ctx)
 	if err != nil {
-		c.AbortWithStatusJSON(
-			http.StatusBadRequest,
-			utilities.NewResponse("Failed to get countries", utilities.WithErr(err.Error())),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -213,12 +178,7 @@ func (ac *addressController) GetCityByID(c *gin.Context) {
 	var uri uriBind
 
 	if err := c.ShouldBindUri(&uri); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest,
-			utilities.NewResponse(
-				"There was a problem with your request. Please double-check your input and try again.",
-				utilities.WithErr(err.Error()),
-			),
-		)
+		handleError(c, err)
 		return
 	}
 
@@ -227,27 +187,16 @@ func (ac *addressController) GetCityByID(c *gin.Context) {
 
 	city, err := ac.addressService.GetCityByID(ctx, uri.ID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			c.AbortWithStatusJSON(
-				http.StatusNotFound,
-				utilities.NewResponse(
-					"We're sorry, but we couldn't find a city with that information. Please check your input and try again.",
-					utilities.WithErr(err.Error()),
-				),
-			)
-			return
-		}
-		c.AbortWithStatusJSON(
-			http.StatusInternalServerError,
-			utilities.NewResponse(
-				"An unexpected error occurred. Please try again later.",
-				utilities.WithErr(err.Error()),
-			),
-		)
+		handleError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, utilities.NewResponse("success", utilities.WithCity(city)))
+}
+
+func handleError(c *gin.Context, err error) {
+	appErr := utilities.HandleError(err)
+	c.AbortWithStatusJSON(appErr.Code.HTTPStatus(), utilities.NewResponse(appErr.Message))
 }
 
 // uriBind represents the structure for URI parameters.

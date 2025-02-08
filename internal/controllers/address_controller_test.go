@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/ryanpujo/melius/internal/models"
 	"github.com/ryanpujo/melius/internal/utilities"
 	"github.com/ryanpujo/melius/proof"
@@ -53,7 +54,7 @@ func (asm *addressServiceMock) GetCityByID(ctx context.Context, cityID uint) (*m
 
 var (
 	countryPayload = &models.CountryPayload{
-		Name:  "Indonesia",
+		Name: "Indonesia",
 	}
 	country = &models.Country{
 		ID:   1,
@@ -69,7 +70,7 @@ var (
 	}
 
 	cityPayload = models.CityPayload{
-		Name:    "Jakarta Timur",
+		Name: "Jakarta Timur",
 	}
 	city = &models.City{
 		ID:   1,
@@ -190,10 +191,10 @@ func TestSaveCountry(t *testing.T) {
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
-					require.Equal(t, http.StatusBadRequest, actualCode)
+					require.Equal(t, http.StatusInternalServerError, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.Country)
-					require.Equal(t, "Failed to record the country", res.Message)
+					require.Equal(t, "An internal server error occurred. Please try again later.", res.Message)
 				},
 			},
 			"validation error": {
@@ -207,7 +208,7 @@ func TestSaveCountry(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.Country)
-					require.Equal(t, "Validation Error", res.Message)
+					require.Equal(t, "There was a problem with your request. Please double-check your input and try again.", res.Message)
 				},
 			},
 		},
@@ -263,10 +264,10 @@ func TestSaveState(t *testing.T) {
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
-					require.Equal(t, http.StatusBadRequest, actualCode)
+					require.Equal(t, http.StatusInternalServerError, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.State)
-					require.Equal(t, "Failed to record the state", res.Message)
+					require.Equal(t, "An internal server error occurred. Please try again later.", res.Message)
 				},
 			},
 			"validation error": {
@@ -281,7 +282,7 @@ func TestSaveState(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.State)
-					require.Equal(t, "Validation Error", res.Message)
+					require.Equal(t, "There was a problem with your request. Please double-check your input and try again.", res.Message)
 				},
 			},
 			"no path variable": {
@@ -296,7 +297,7 @@ func TestSaveState(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.State)
-					require.Equal(t, "No country associated with this state", res.Message)
+					require.Equal(t, "There was a problem with your request. Please double-check your input and try again.", res.Message)
 				},
 			},
 		},
@@ -353,10 +354,10 @@ func TestSaveCity(t *testing.T) {
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
-					require.Equal(t, http.StatusBadRequest, actualCode)
+					require.Equal(t, http.StatusInternalServerError, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.City)
-					require.Equal(t, "Failed to record the city", res.Message)
+					require.Equal(t, "An internal server error occurred. Please try again later.", res.Message)
 				},
 			},
 			"validation error": {
@@ -371,7 +372,7 @@ func TestSaveCity(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.City)
-					require.Equal(t, "Validation Error", res.Message)
+					require.Equal(t, "There was a problem with your request. Please double-check your input and try again.", res.Message)
 				},
 			},
 			"no path variable": {
@@ -386,7 +387,7 @@ func TestSaveCity(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.City)
-					require.Equal(t, "No state associated with this city", res.Message)
+					require.Equal(t, "There was a problem with your request. Please double-check your input and try again.", res.Message)
 				},
 			},
 		},
@@ -441,10 +442,10 @@ func TestSaveAddress(t *testing.T) {
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
-					require.Equal(t, http.StatusBadRequest, actualCode)
+					require.Equal(t, http.StatusInternalServerError, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.Address)
-					require.Equal(t, "Failed to record the address", res.Message)
+					require.Equal(t, "An internal server error occurred. Please try again later.", res.Message)
 				},
 			},
 			"validation error": {
@@ -459,7 +460,7 @@ func TestSaveAddress(t *testing.T) {
 					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.NotZero(t, res)
 					require.Zero(t, res.Address)
-					require.Equal(t, "Validation Error", res.Message)
+					require.Equal(t, "There was a problem with your request. Please double-check your input and try again.", res.Message)
 				},
 			},
 		},
@@ -506,7 +507,8 @@ func TestGetCountries(t *testing.T) {
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
-					require.Equal(t, http.StatusBadRequest, actualCode)
+					require.Equal(t, http.StatusInternalServerError, actualCode)
+					require.Equal(t, "An internal server error occurred. Please try again later.", res.Message)
 					require.Zero(t, res.Countries)
 				},
 			},
@@ -551,13 +553,14 @@ func TestGetCityByID(t *testing.T) {
 				token:    "sgfef",
 				noHeader: false,
 				arrange: func() {
-					asm.On("GetCityByID", mock.Anything, uint(1)).Return((*models.City)(nil), errors.New("failed")).Once()
+					asm.On("GetCityByID", mock.Anything, uint(1)).
+						Return((*models.City)(nil), utilities.HandleError(&pgconn.PgError{Code: utilities.PGNotNullViolation})).Once()
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
-					require.Equal(t, http.StatusInternalServerError, actualCode)
+					require.Equal(t, http.StatusBadRequest, actualCode)
 					require.Zero(t, res.City)
-					require.Equal(t, "An unexpected error occurred. Please try again later.", res.Message)
+					require.Equal(t, "A required field is missing. Please check your input.", res.Message)
 				},
 			},
 			"err no rows error": {
@@ -565,13 +568,14 @@ func TestGetCityByID(t *testing.T) {
 				token:    "sgfef",
 				noHeader: false,
 				arrange: func() {
-					asm.On("GetCityByID", mock.Anything, uint(1)).Return((*models.City)(nil), sql.ErrNoRows).Once()
+					asm.On("GetCityByID", mock.Anything, uint(1)).
+						Return((*models.City)(nil), utilities.HandleError(sql.ErrNoRows)).Once()
 					jwtm.On("VerifyToken", mock.Anything).Return(token, nil).Once()
 				},
 				assert: func(t *testing.T, actualCode int, res utilities.Response) {
 					require.Equal(t, http.StatusNotFound, actualCode)
 					require.Zero(t, res.City)
-					require.Equal(t, "We're sorry, but we couldn't find a city with that information. Please check your input and try again.", res.Message)
+					require.Equal(t, "We're sorry, but we couldn't find any data with that information. Please check your input and try again.", res.Message)
 				},
 			},
 			"no path variable": {
