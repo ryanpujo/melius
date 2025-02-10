@@ -55,7 +55,9 @@ func (ar *addressRepo) saveEntity(ctx context.Context, query string, tx *sql.Tx,
 // SaveCountry inserts a new country into the "countries" table and returns its generated ID.
 func (ar *addressRepo) SaveCountry(ctx context.Context, country *models.CountryPayload, tx *sql.Tx) (*models.Country, error) {
 	query := `
-		INSERT INTO countries (name) VALUES ($1) RETURNING id, name
+		INSERT INTO countries (name) VALUES ($1)
+		ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+		RETURNING id, name
 	`
 
 	var createdCountry models.Country

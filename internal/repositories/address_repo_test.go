@@ -53,6 +53,12 @@ var (
 )
 
 func TestSaveCountry(t *testing.T) {
+	query := `
+		INSERT INTO countries (name) VALUES ($1)
+		ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
+		RETURNING id, name
+	`
+	query = regexp.QuoteMeta(query)
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
@@ -64,7 +70,7 @@ func TestSaveCountry(t *testing.T) {
 			},
 			arrange: func() {
 				row := mock.NewRows([]string{"id", "name"}).AddRow(country.ID, country.Name)
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(countryPayload.Name).
+				mock.ExpectQuery(query).WithArgs(countryPayload.Name).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualCountry *models.Country, err error) {
@@ -81,7 +87,7 @@ func TestSaveCountry(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id", "name"}).AddRow(country.ID, country.Name)
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(countryPayload.Name).
+				mock.ExpectQuery(query).WithArgs(countryPayload.Name).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualCountry *models.Country, err error) {
@@ -98,7 +104,7 @@ func TestSaveCountry(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO countries").WithArgs(countryPayload.Name).
+				mock.ExpectQuery(query).WithArgs(countryPayload.Name).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualCountry *models.Country, err error) {
