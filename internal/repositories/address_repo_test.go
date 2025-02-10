@@ -5,11 +5,13 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ryanpujo/melius/internal/models"
+	"github.com/ryanpujo/melius/internal/repositories"
 	"github.com/stretchr/testify/require"
 )
 
@@ -53,12 +55,7 @@ var (
 )
 
 func TestSaveCountry(t *testing.T) {
-	query := `
-		INSERT INTO countries (name) VALUES ($1)
-		ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
-		RETURNING id, name
-	`
-	query = regexp.QuoteMeta(query)
+	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "countries", "name"))
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
@@ -128,6 +125,7 @@ func TestSaveCountry(t *testing.T) {
 }
 
 func TestSaveState(t *testing.T) {
+	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "states", "name, country_id"))
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
@@ -139,7 +137,7 @@ func TestSaveState(t *testing.T) {
 			},
 			arrange: func() {
 				row := mock.NewRows([]string{"id", "name"}).AddRow(state.ID, state.Name)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(statePayload.Name, 2).
+				mock.ExpectQuery(query).WithArgs(statePayload.Name, 2).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualState *models.State, err error) {
@@ -156,7 +154,7 @@ func TestSaveState(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id", "name"}).AddRow(state.ID, state.Name)
-				mock.ExpectQuery("INSERT INTO states").WithArgs(statePayload.Name, 2).
+				mock.ExpectQuery(query).WithArgs(statePayload.Name, 2).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualState *models.State, err error) {
@@ -173,7 +171,7 @@ func TestSaveState(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO states").WithArgs(statePayload.Name, 2).
+				mock.ExpectQuery(query).WithArgs(statePayload.Name, 2).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualState *models.State, err error) {
@@ -197,6 +195,7 @@ func TestSaveState(t *testing.T) {
 }
 
 func TestSaveCity(t *testing.T) {
+	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "cities", "name, state_id"))
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
@@ -208,7 +207,7 @@ func TestSaveCity(t *testing.T) {
 			},
 			arrange: func() {
 				row := mock.NewRows([]string{"id", "name"}).AddRow(city.ID, city.Name)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(cityPayload.Name, 2).
+				mock.ExpectQuery(query).WithArgs(cityPayload.Name, 2).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
@@ -225,7 +224,7 @@ func TestSaveCity(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id", "name"}).AddRow(city.ID, city.Name)
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(cityPayload.Name, 2).
+				mock.ExpectQuery(query).WithArgs(cityPayload.Name, 2).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualCity *models.City, err error) {
@@ -242,7 +241,7 @@ func TestSaveCity(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 				row := mock.NewRows([]string{"id"}).AddRow("string")
-				mock.ExpectQuery("INSERT INTO cities").WithArgs(cityPayload.Name, 2).
+				mock.ExpectQuery(query).WithArgs(cityPayload.Name, 2).
 					WillReturnRows(row)
 			},
 			assert: func(t *testing.T, actualCity *models.City, err error) {

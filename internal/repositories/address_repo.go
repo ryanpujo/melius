@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sort"
 	"strings"
 
@@ -52,13 +53,15 @@ func (ar *addressRepo) saveEntity(ctx context.Context, query string, tx *sql.Tx,
 	return row
 }
 
-// SaveCountry inserts a new country into the "countries" table and returns its generated ID.
-func (ar *addressRepo) SaveCountry(ctx context.Context, country *models.CountryPayload, tx *sql.Tx) (*models.Country, error) {
-	query := `
-		INSERT INTO countries (name) VALUES ($1)
+var PreparedInsertQuery = `
+		INSERT INTO %s (%s) VALUES ($1)
 		ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
 		RETURNING id, name
 	`
+
+// SaveCountry inserts a new country into the "countries" table and returns its generated ID.
+func (ar *addressRepo) SaveCountry(ctx context.Context, country *models.CountryPayload, tx *sql.Tx) (*models.Country, error) {
+	query := fmt.Sprintf(PreparedInsertQuery, "countries", "name")
 
 	var createdCountry models.Country
 	row := ar.saveEntity(ctx, query, tx, country.Name)
@@ -145,9 +148,7 @@ func (ar *addressRepo) GetCountries(ctx context.Context) ([]*models.Country, err
 
 // SaveState inserts a new state into the "states" table and returns its generated ID.
 func (ar *addressRepo) SaveState(ctx context.Context, state *models.StatePayload, countryID uint, tx *sql.Tx) (*models.State, error) {
-	query := `
-		INSERT INTO states (name, country_id) VALUES ($1, $2) RETURNING id, name
-	`
+	query := fmt.Sprintf(PreparedInsertQuery, "states", "name, country_id")
 
 	var createdState models.State
 	row := ar.saveEntity(ctx, query, tx, state.Name, countryID)
@@ -159,9 +160,7 @@ func (ar *addressRepo) SaveState(ctx context.Context, state *models.StatePayload
 
 // SaveCity inserts a new city into the "cities" table and returns its generated ID.
 func (ar *addressRepo) SaveCity(ctx context.Context, city *models.CityPayload, stateID uint, tx *sql.Tx) (*models.City, error) {
-	query := `
-		INSERT INTO cities (name, state_id) VALUES ($1, $2) RETURNING id, name
-	`
+	query := fmt.Sprintf(PreparedInsertQuery, "cities", "name, state_id")
 	var createdCity models.City
 	row := ar.saveEntity(ctx, query, tx, city.Name, stateID)
 	if err := row.Scan(&createdCity.ID, &createdCity.Name); err != nil {
