@@ -326,27 +326,45 @@ func TestGetCityByID(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func saveAddressMockExpectation() *sqlmock.ExpectedQuery {
+func saveAddressMockExpectation(addrTest *models.Address) *sqlmock.ExpectedQuery {
 	query := `
-		INSERT INTO addresses (address_line, postal_code, is_main, city_id) 
-		VALUES ($1, $2, $3, $4) 
-		RETURNING id, address_line, postal_code, is_main, city_id
+		WITH created_address AS (
+			INSERT INTO addresses (address_line, postal_code, is_main, city_id) 
+			VALUES ($1, $2, $3, $4) 
+			RETURNING id, address_line, postal_code, is_main, city_id
+		)
+		SELECT 
+			ca.id, ca.address_line, ca.postal_code, ca.is_main,
+			c.id, c.name,
+			s.id, s.name,
+			co.id, co.name
+		FROM created_address ca
+		JOIN cities c ON c.id = ca.city_id
+		JOIN states s ON s.id = c.state_id
+		JOIN countries co ON co.id = s.country_id
 	`
 	query = regexp.QuoteMeta(query)
-	row := mock.NewRows([]string{"id", "address_line", "postal_code", "is_main", "city_id"}).AddRow(
-		1,
-		address.AddressLine,
-		address.PostalCode,
-		address.IsMain,
-		address.City.ID,
-	)
+	columns := []string{
+		"id", "address_line", "postal_code", "is_main",
+		"city_id", "city_name",
+		"state_id", "state_name",
+		"country_id", "country_name",
+	}
+
+	// Create a row with the expected data.
+	rows := sqlmock.NewRows(columns).
+		AddRow(addrTest.ID, addrTest.AddressLine, addrTest.PostalCode, addrTest.IsMain,
+			addrTest.City.ID, addrTest.City.Name,
+			addrTest.City.State.ID, addrTest.City.State.Name,
+			addrTest.City.State.Country.ID, addrTest.City.State.Country.Name)
+
 	return mock.ExpectQuery(query).WithArgs(
 		addressPayload.AddressLine,
 		addressPayload.PostalCode,
 		addressPayload.IsMain,
 		address.City.ID,
 	).
-		WillReturnRows(row)
+		WillReturnRows(rows)
 }
 
 func TestSaveAddress(t *testing.T) {
@@ -377,8 +395,7 @@ func TestSaveAddress(t *testing.T) {
 				return nil
 			},
 			arrange: func() {
-				saveAddressMockExpectation()
-				getCityByIDQuery(1)
+				saveAddressMockExpectation(address)
 			},
 			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.NoError(t, err)
@@ -393,8 +410,7 @@ func TestSaveAddress(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				saveAddressMockExpectation()
-				getCityByIDQuery(1)
+				saveAddressMockExpectation(address)
 			},
 			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.NoError(t, err)
@@ -409,20 +425,7 @@ func TestSaveAddress(t *testing.T) {
 			},
 			arrange: func() {
 				mock.ExpectBegin()
-				saveAddressMockExpectation().WillReturnError(errors.New("failed"))
-			},
-			assert: func(t *testing.T, actualAddress *models.Address, err error) {
-				require.Error(t, err)
-				require.Zero(t, actualAddress)
-			},
-		},
-		"error finding city": {
-			tx: func() *sql.Tx {
-				return nil
-			},
-			arrange: func() {
-				saveAddressMockExpectation()
-				getCityByIDQuery(1).WillReturnError(errors.New("failed"))
+				saveAddressMockExpectation(address).WillReturnError(errors.New("failed"))
 			},
 			assert: func(t *testing.T, actualAddress *models.Address, err error) {
 				require.Error(t, err)
@@ -547,8 +550,7 @@ func TestCreateUserAddress(t *testing.T) {
 				mock.ExpectBegin()
 
 				rows := mock.NewRows([]string{"id"})
-				saveAddressMockExpectation()
-				getCityByIDQuery(1)
+				saveAddressMockExpectation(address)
 				mock.ExpectQuery(expectedQuery).WithArgs(1, 2).WillReturnRows(rows)
 				mock.ExpectCommit()
 			},
@@ -570,7 +572,7 @@ func TestCreateUserAddress(t *testing.T) {
 		"failed to save address": {
 			arrange: func() {
 				mock.ExpectBegin()
-				saveAddressMockExpectation().WillReturnError(errors.New("failed"))
+				saveAddressMockExpectation(address).WillReturnError(errors.New("failed"))
 			},
 			assert: func(t *testing.T, actual *models.Address, err error) {
 				require.Error(t, err)
@@ -581,8 +583,7 @@ func TestCreateUserAddress(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 
-				saveAddressMockExpectation()
-				getCityByIDQuery(1)
+				saveAddressMockExpectation(address)
 				mock.ExpectQuery(expectedQuery).WithArgs(1, 2).WillReturnError(errors.New("failed"))
 			},
 			assert: func(t *testing.T, actual *models.Address, err error) {

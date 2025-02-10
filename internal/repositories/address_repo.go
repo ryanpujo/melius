@@ -131,11 +131,6 @@ func (ar *addressRepo) GetCountries(ctx context.Context) ([]*models.Country, err
 		state.Cities = append(state.Cities, city)
 	}
 
-	// Handle any error during iteration
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
 	for _, v := range countryMap {
 		countries = append(countries, v)
 	}
@@ -211,12 +206,27 @@ func (ar *addressRepo) GetCityByID(ctx context.Context, cityID uint) (*models.Ci
 // Returns the ID of the new address or an error if the operation fails.
 func (ar *addressRepo) SaveAddress(ctx context.Context, address *models.AddressPayload, tx *sql.Tx) (*models.Address, error) {
 	query := `
-		INSERT INTO addresses (address_line, postal_code, is_main, city_id) 
-		VALUES ($1, $2, $3, $4) 
-		RETURNING id, address_line, postal_code, is_main, city_id
+		WITH created_address AS (
+			INSERT INTO addresses (address_line, postal_code, is_main, city_id) 
+			VALUES ($1, $2, $3, $4) 
+			RETURNING id, address_line, postal_code, is_main, city_id
+		)
+		SELECT 
+			ca.id, ca.address_line, ca.postal_code, ca.is_main,
+			c.id, c.name,
+			s.id, s.name,
+			co.id, co.name
+		FROM created_address ca
+		JOIN cities c ON c.id = ca.city_id
+		JOIN states s ON s.id = c.state_id
+		JOIN countries co ON co.id = s.country_id
 	`
 	createdAddress := models.Address{
-		City: &models.City{},
+		City: &models.City{
+			State: &models.State{
+				Country: &models.Country{},
+			},
+		},
 	}
 	row := ar.saveEntity(ctx, query, tx,
 		address.AddressLine,
@@ -230,16 +240,15 @@ func (ar *addressRepo) SaveAddress(ctx context.Context, address *models.AddressP
 		&createdAddress.PostalCode,
 		&createdAddress.IsMain,
 		&createdAddress.City.ID,
+		&createdAddress.City.Name,
+		&createdAddress.City.State.ID,
+		&createdAddress.City.State.Name,
+		&createdAddress.City.State.Country.ID,
+		&createdAddress.City.State.Country.Name,
 	)
 	if err != nil {
 		return nil, err
 	}
-
-	city, err := ar.GetCityByID(ctx, address.CityID)
-	if err != nil {
-		return nil, err
-	}
-	createdAddress.City = city
 
 	return &createdAddress, nil
 }
