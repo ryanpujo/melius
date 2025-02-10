@@ -3,6 +3,7 @@ package repositories_test
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"errors"
 	"regexp"
 	"testing"
@@ -549,9 +550,8 @@ func TestCreateUserAddress(t *testing.T) {
 			arrange: func() {
 				mock.ExpectBegin()
 
-				rows := mock.NewRows([]string{"id"})
 				saveAddressMockExpectation(address)
-				mock.ExpectQuery(expectedQuery).WithArgs(1, 2).WillReturnRows(rows)
+				mock.ExpectExec(expectedQuery).WithArgs(1, 2).WillReturnResult(driver.ResultNoRows)
 				mock.ExpectCommit()
 			},
 			assert: func(t *testing.T, actual *models.Address, err error) {
@@ -584,7 +584,7 @@ func TestCreateUserAddress(t *testing.T) {
 				mock.ExpectBegin()
 
 				saveAddressMockExpectation(address)
-				mock.ExpectQuery(expectedQuery).WithArgs(1, 2).WillReturnError(errors.New("failed"))
+				mock.ExpectExec(expectedQuery).WithArgs(1, 2).WillReturnError(errors.New("failed"))
 			},
 			assert: func(t *testing.T, actual *models.Address, err error) {
 				require.Error(t, err)

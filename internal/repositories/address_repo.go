@@ -269,8 +269,8 @@ func (ar *addressRepo) CreateUserAddress(ctx context.Context, address *models.Ad
 		return nil, err
 	}
 
-	row := tx.QueryRowContext(ctx, query, createdAddress.ID, userID)
-	if err := row.Err(); err != nil {
+	_, err = tx.ExecContext(ctx, query, createdAddress.ID, userID)
+	if err != nil {
 		return nil, err
 	}
 
