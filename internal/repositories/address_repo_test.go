@@ -55,7 +55,7 @@ var (
 )
 
 func TestSaveCountry(t *testing.T) {
-	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "countries", "name"))
+	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "countries", "name", "name"))
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
@@ -125,7 +125,7 @@ func TestSaveCountry(t *testing.T) {
 }
 
 func TestSaveState(t *testing.T) {
-	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "states", "name, country_id"))
+	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "states", "name, country_id", "name, country_id"))
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
@@ -195,7 +195,7 @@ func TestSaveState(t *testing.T) {
 }
 
 func TestSaveCity(t *testing.T) {
-	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "cities", "name, state_id"))
+	query := regexp.QuoteMeta(fmt.Sprintf(repositories.PreparedInsertQuery, "cities", "name, state_id", "name, state_id"))
 	tableTest := map[string]struct {
 		tx      func() *sql.Tx
 		arrange func()
